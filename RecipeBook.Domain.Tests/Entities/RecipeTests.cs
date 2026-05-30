@@ -1,4 +1,3 @@
-using System.Threading;
 using FluentAssertions;
 using RecipeBook.Domain.Entities;
 using RecipeBook.Domain.Enums;
@@ -461,7 +460,7 @@ public class RecipeTests
     }
 
     [Fact]
-    public void SubmitForReview_WhenAlreadyPendingOrPublic_IsNoOp()
+    public void SubmitForReview_WhenAlreadyPending_IsNoOp()
     {
         var recipe = BuildRecipe();
         recipe.SubmitForReview();
@@ -497,10 +496,8 @@ public class RecipeTests
     [Fact]
     public void SubmitForReview_FromPublic_SetsVisibilityToPendingReview()
     {
-        var recipe = BuildRecipe();
-        recipe.SubmitForReview();
-        recipe.Approve(); // now public
         // Arrange
+        var recipe = BuildRecipe();
         recipe.SubmitForReview();
         recipe.Approve(); // now public
 

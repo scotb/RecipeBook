@@ -91,6 +91,7 @@ public sealed class Recipe
     public void AddIngredient(string name, decimal? quantity = null, string? unit = null, string? notes = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ThrowIfNonPositive(quantity, nameof(quantity));
         ThrowIfExceedsMaxLength(name, 200, nameof(name));
         ThrowIfExceedsMaxLength(unit, 50, nameof(unit));
         ThrowIfExceedsMaxLength(notes, 500, nameof(notes));
