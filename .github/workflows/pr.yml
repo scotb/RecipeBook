@@ -76,7 +76,7 @@ jobs:
             --collect:"XPlat Code Coverage"
 
       - name: Publish test results
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: always()
         with:
           name: Test Results
