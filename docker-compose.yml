@@ -1,0 +1,63 @@
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: recipebook
+      POSTGRES_USER: recipebook
+      POSTGRES_PASSWORD: recipebook_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recipebook"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ── REST API ────────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: RecipeBook.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Database__Provider: PostgreSQL
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=recipebook;Username=recipebook;Password=recipebook_dev"
+      Jwt__Issuer: "${JWT_ISSUER:-https://localhost:7100}"
+      Jwt__Audience: "${JWT_AUDIENCE:-https://localhost:7200}"
+      Jwt__ExpiryMinutes: "${JWT_EXPIRY_MINUTES:-60}"
+      Jwt__SecretKey: "${JWT_SECRET_KEY}"
+      Authentication__Google__ClientId: "${GOOGLE_CLIENT_ID}"
+      Authentication__Google__ClientSecret: "${GOOGLE_CLIENT_SECRET}"
+      Authentication__Facebook__AppId: "${FACEBOOK_APP_ID}"
+      Authentication__Facebook__AppSecret: "${FACEBOOK_APP_SECRET}"
+      Admin__SeedEmails: "${ADMIN_SEED_EMAILS}"
+    ports:
+      - "7100:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Blazor Server UI ────────────────────────────────────────────────────────
+  blazor:
+    build:
+      context: .
+      dockerfile: RecipeBook.Blazor.Server/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Api__BaseUrl: http://api:8080
+    ports:
+      - "7200:8080"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

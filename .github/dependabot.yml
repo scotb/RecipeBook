@@ -1,0 +1,34 @@
+version: 2
+updates:
+  # ── .NET NuGet packages ───────────────────────────────────────────────────
+  - package-ecosystem: nuget
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      aspnetcore:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+      efcore:
+        patterns:
+          - "Microsoft.EntityFrameworkCore.*"
+          - "Npgsql.EntityFrameworkCore.*"
+      testing:
+        patterns:
+          - "xunit*"
+          - "FluentAssertions"
+          - "Moq"
+          - "coverlet.*"
+          - "bunit"
+          - "Testcontainers.*"
+          - "Microsoft.NET.Test.Sdk"
+
+  # ── GitHub Actions ────────────────────────────────────────────────────────
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5

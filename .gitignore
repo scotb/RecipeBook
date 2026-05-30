@@ -1,0 +1,94 @@
+# ── .NET build output ────────────────────────────────────────────────────────
+bin/
+obj/
+out/
+
+# ── Visual Studio ─────────────────────────────────────────────────────────────
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.vcxproj.filters
+
+# ── JetBrains Rider ───────────────────────────────────────────────────────────
+.idea/
+*.sln.iml
+
+# ── VS Code ───────────────────────────────────────────────────────────────────
+.vscode/
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ── NuGet ─────────────────────────────────────────────────────────────────────
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ── User secrets (local dev) ──────────────────────────────────────────────────
+# appsettings.*.json that contain secrets should never be committed
+appsettings.Local.json
+appsettings.Development.Secrets.json
+
+# ── Docker / environment secrets ──────────────────────────────────────────────
+.env
+docker-compose.override.yml
+
+# ── Test results / coverage ───────────────────────────────────────────────────
+TestResults/
+coverage/
+*.trx
+*.coveragexml
+coverage.json
+lcov.info
+
+# ── EF Core ──────────────────────────────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+
+# ── Publish output ────────────────────────────────────────────────────────────
+publish/
+**/publish/
+
+# ── Node.js (Angular / React stubs) ──────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# ── Angular ───────────────────────────────────────────────────────────────────
+dist/
+.angular/
+
+# ── React ─────────────────────────────────────────────────────────────────────
+build/
+.cache/
+
+# ── OS artifacts ──────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Certificates ─────────────────────────────────────────────────────────────
+*.pfx
+*.pem
+*.key
+*.crt
