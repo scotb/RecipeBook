@@ -97,6 +97,7 @@ public sealed class Recipe
 
         var ingredient = new Ingredient(Id, name, quantity, unit, notes, _ingredients.Count);
         _ingredients.Add(ingredient);
+        TouchUpdatedAt();
     }
 
     public void RemoveIngredient(Guid ingredientId)
@@ -108,6 +109,7 @@ public sealed class Recipe
 
         for (var i = 0; i < _ingredients.Count; i++)
             _ingredients[i].SortOrder = i;
+        TouchUpdatedAt();
     }
 
     public void AddStep(string body, string? title = null)
@@ -118,18 +120,28 @@ public sealed class Recipe
 
         var step = new RecipeStep(Id, body, title, _steps.Count);
         _steps.Add(step);
+        TouchUpdatedAt();
     }
 
     public void ReorderSteps(IEnumerable<Guid> orderedStepIds)
     {
+        ArgumentNullException.ThrowIfNull(orderedStepIds);
+
         var ids = orderedStepIds.ToList();
-        var existingIds = _steps.Select(s => s.Id).ToHashSet();
+        var existingById = _steps.ToDictionary(s => s.Id);
 
-        if (ids.Count != existingIds.Count || ids.Any(id => !existingIds.Contains(id)))
+        if (ids.Count != existingById.Count ||
+            ids.Distinct().Count() != existingById.Count ||
+            ids.Any(id => !existingById.ContainsKey(id)))
             throw new ArgumentException("The provided step IDs must exactly match the current step set.", nameof(orderedStepIds));
-
+        _steps.Clear();
         for (var i = 0; i < ids.Count; i++)
-            _steps.First(s => s.Id == ids[i]).SortOrder = i;
+        {
+            var step = existingById[ids[i]];
+            step.SortOrder = i;
+            _steps.Add(step);
+        }
+        TouchUpdatedAt();
     }
 
     public void AddTag(string name)
@@ -143,6 +155,7 @@ public sealed class Recipe
             return;
 
         _tags.Add(new RecipeTag(Id, normalized));
+        TouchUpdatedAt();
     }
 
     public void RemoveTag(string name)
@@ -153,31 +166,48 @@ public sealed class Recipe
         var tag = _tags.FirstOrDefault(t => t.Name == normalized);
 
         if (tag is not null)
+        {
             _tags.Remove(tag);
+            TouchUpdatedAt();
+        }
     }
 
     public void SubmitForReview()
     {
-        if (Visibility == RecipeVisibility.Private)
-            Visibility = RecipeVisibility.PendingReview;
+        if (Visibility == RecipeVisibility.PendingReview)
+            return;
+
+        Visibility = RecipeVisibility.PendingReview;
+        RejectionReason = null;
+        TouchUpdatedAt();
     }
 
     public void Approve()
     {
+        if (Visibility != RecipeVisibility.PendingReview)
+            throw new InvalidOperationException("Recipe must be pending review to be approved.");
         Visibility = RecipeVisibility.Public;
         RejectionReason = null;
+        TouchUpdatedAt();
     }
 
     public void Reject(string reason)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+        if (Visibility != RecipeVisibility.PendingReview)
+            throw new InvalidOperationException("Recipe must be pending review to be rejected.");
         Visibility = RecipeVisibility.Private;
         RejectionReason = reason;
+        TouchUpdatedAt();
     }
 
     public void MakePrivate()
     {
-        Visibility = RecipeVisibility.Private;
+        if (Visibility != RecipeVisibility.Private)
+        {
+            Visibility = RecipeVisibility.Private;
+            TouchUpdatedAt();
+        }
     }
 
     public Recipe Fork(string newOwnerId)
@@ -226,4 +256,12 @@ public sealed class Recipe
     }
 
     private static string NormalizeTag(string name) => name.Trim().ToLowerInvariant();
+
+    private void TouchUpdatedAt()
+    {
+        var prior = UpdatedAt;
+        var now = DateTimeOffset.UtcNow;
+        // Ensure monotonic increase even if system clock resolution is coarse
+        UpdatedAt = now > prior ? now : prior.AddTicks(1);
+    }
 }

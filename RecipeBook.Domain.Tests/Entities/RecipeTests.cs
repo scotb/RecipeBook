@@ -1,3 +1,4 @@
+using System.Threading;
 using FluentAssertions;
 using RecipeBook.Domain.Entities;
 using RecipeBook.Domain.Enums;
@@ -494,6 +495,57 @@ public class RecipeTests
     }
 
     [Fact]
+    public void SubmitForReview_FromPublic_SetsVisibilityToPendingReview()
+    {
+        var recipe = BuildRecipe();
+        recipe.SubmitForReview();
+        recipe.Approve(); // now public
+        // Arrange
+        recipe.SubmitForReview();
+        recipe.Approve(); // now public
+
+        // Act
+        recipe.SubmitForReview();
+
+        // Assert
+        recipe.Visibility.Should().Be(RecipeVisibility.PendingReview);
+    }
+
+    [Fact]
+    public void SubmitForReview_FromPublic_UpdatesUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+        recipe.SubmitForReview();
+        recipe.Approve(); // now public
+
+        var before = recipe.UpdatedAt;
+
+        recipe.SubmitForReview();
+
+        recipe.UpdatedAt.Should().BeAfter(before);
+    }
+
+    [Fact]
+    public void Approve_WhenNotPending_ThrowsInvalidOperationException()
+    {
+        var recipe = BuildRecipe();
+
+        Action act = () => recipe.Approve();
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void Reject_WhenNotPending_ThrowsInvalidOperationException()
+    {
+        var recipe = BuildRecipe();
+
+        Action act = () => recipe.Reject("nope");
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
     public void Approve_ClearsRejectionReason()
     {
         var recipe = BuildRecipe();
@@ -592,5 +644,70 @@ public class RecipeTests
         var act = () => original.Fork(newOwnerId!);
 
         act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Mutations_UpdateUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+
+        var before = recipe.UpdatedAt;
+        recipe.AddIngredient("salt");
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        before = recipe.UpdatedAt;
+        var ingId = recipe.Ingredients[0].Id;
+        recipe.RemoveIngredient(ingId);
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        before = recipe.UpdatedAt;
+        recipe.AddStep("Stir.");
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        recipe.AddStep("Bake.");
+        var ids = recipe.Steps.Select(s => s.Id).ToList();
+        before = recipe.UpdatedAt;
+        recipe.ReorderSteps(ids.AsEnumerable().Reverse());
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        before = recipe.UpdatedAt;
+        recipe.AddTag("newtag");
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        before = recipe.UpdatedAt;
+        recipe.RemoveTag("newtag");
+        recipe.UpdatedAt.Should().BeAfter(before);
+    }
+
+    [Fact]
+    public void VisibilityTransitions_UpdateUpdatedAt_And_NoOpDoesNot()
+    {
+        var recipe = BuildRecipe();
+
+        var before = recipe.UpdatedAt;
+        recipe.SubmitForReview();
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        before = recipe.UpdatedAt;
+        // no-op
+        recipe.SubmitForReview();
+        recipe.UpdatedAt.Should().Be(before);
+
+        recipe.Approve();
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        // To reject, recipe must be pending review again
+        before = recipe.UpdatedAt;
+        recipe.SubmitForReview();
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        before = recipe.UpdatedAt;
+        recipe.Reject("Bad content");
+        recipe.UpdatedAt.Should().BeAfter(before);
+
+        // MakePrivate when already private is a no-op
+        before = recipe.UpdatedAt;
+        recipe.MakePrivate();
+        recipe.UpdatedAt.Should().Be(before);
     }
 }
