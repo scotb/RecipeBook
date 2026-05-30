@@ -2,76 +2,118 @@
 
 ## 1. Philosophy
 
-RecipeBook is built using **Test-Driven Development (TDD)** with **agentic paired programming**. The core principle is:
+RecipeBook is built using **Test-Driven Development (TDD)** with **agentic paired programming**. The core principles are:
 
-> **Tests are the specification. Code exists to make tests pass.**
+> **Tests verify behavior through public interfaces, not implementation details.**  
+> **One test. One implementation. Repeat.**
 
-No production code is written until the tests that validate it are written, reviewed, and approved by the human engineer. This creates a clear contract: the agent knows exactly what "done" looks like before writing a single line of implementation.
+Tests describe *what* the system does, not *how*. A good test reads like a specification and survives internal refactors. Code can change entirely; tests should not need to change unless observable behavior changes.
+
+**The anti-pattern to avoid — horizontal slicing:**  
+Writing all tests for a feature upfront, then writing all the implementation, produces tests that verify the *shape* of imagined code rather than real behavior. They become insensitive to real changes and break on refactors that don't affect behavior. This approach is explicitly avoided.
+
+**The correct approach — vertical slices via tracer bullets:**  
+One test → minimal implementation → next test → minimal implementation → repeat. Each test responds to what was learned from the previous cycle.
+
+```
+WRONG (horizontal):
+  RED:   test1, test2, test3, test4, test5
+  GREEN: impl1, impl2, impl3, impl4, impl5
+
+RIGHT (vertical):
+  RED → GREEN: test1 → impl1
+  RED → GREEN: test2 → impl2
+  RED → GREEN: test3 → impl3
+  ...
+```
 
 ---
 
-## 2. The TDD Workflow (Per Feature)
+## 2. Build Order
 
-Every feature — no matter how small — follows this exact sequence:
+The stack is built layer by layer. Each layer's public interface is agreed before any code is written. No layer is started until the layer below it is complete and tests pass.
+
+```
+1. Domain        (RecipeBook.Domain + RecipeBook.Domain.Tests)
+2. Application   (RecipeBook.Application + RecipeBook.Application.Tests)
+3. Infrastructure(RecipeBook.Infrastructure + RecipeBook.Infrastructure.Tests)
+4. API           (RecipeBook.Api + RecipeBook.Api.Tests)
+5. Blazor UI     (RecipeBook.Blazor.Server + RecipeBook.Blazor.Server.Tests)
+```
+
+---
+
+## 3. The TDD Workflow (Per Feature / Behavior Group)
+
+Every unit of work — one entity, one use case, one endpoint, one component — follows this sequence:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│  STEP 1: Define Acceptance Criteria                  │
-│  Human engineer + agent discuss the feature.         │
-│  Agree on: what the code must do, edge cases,        │
-│  error conditions, and the public API surface.       │
-│  Output: written acceptance criteria (in the         │
-│  GitHub issue or task description).                  │
+│  STEP 1: Plan — Interface + Behavior List            │
+│  Agent reads the relevant PRD section and proposes:  │
+│  - The public interface (constructor signature,      │
+│    method names, parameters, return types)           │
+│  - A prioritized list of behaviors to test           │
+│  Human engineer reviews and approves (or adjusts)    │
+│  the interface and behavior list before any code     │
+│  is written.                                         │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│  STEP 2: Agent Writes Tests                          │
-│  Agent generates all test code for the feature.      │
-│  Tests reference the types and method signatures     │
-│  that WILL exist, but do not yet. Tests will fail    │
-│  to compile at this point — that is expected.        │
+│  STEP 2: Tracer Bullet                               │
+│  Agent writes ONE test for the first / most          │
+│  important behavior. Test fails to compile or        │
+│  fails at runtime — that is expected (RED).          │
+│  Agent writes the minimum production code to make    │
+│  it pass (GREEN).                                    │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│  STEP 3: Human Reviews and Approves Tests            │
-│  Engineer reads every test. Verifies:                │
-│  - Tests match the agreed acceptance criteria        │
-│  - Edge cases are covered                            │
-│  - Test names are clear and follow conventions       │
-│  - No test is testing implementation details         │
-│  Engineer approves (merge/commit tests) or requests  │
-│  changes. Agent revises. Repeat until approved.      │
+│  STEP 3: Incremental Loop                            │
+│  For each remaining behavior in the approved list:   │
+│    RED:   Write next test → fails                    │
+│    GREEN: Minimal code to pass → passes              │
+│  Rules:                                              │
+│  - One test at a time                                │
+│  - Only enough code to pass the current test         │
+│  - Do not anticipate future tests                    │
+│  - Never refactor while RED                          │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│  STEP 4: Agent Implements Production Code            │
-│  Agent writes the minimum production code needed     │
-│  to make all tests pass. Follows SOLID and Clean     │
-│  Architecture. Does not write code not covered       │
-│  by a test.                                          │
-│  Agent runs tests and iterates until all pass.       │
+│  STEP 4: Refactor                                    │
+│  All behaviors are GREEN. Now look for:              │
+│  - Duplicated logic to extract                       │
+│  - Modules to deepen (simplify interface,            │
+│    move complexity inward)                           │
+│  - SOLID principles to apply naturally               │
+│  Run tests after every refactor step.                │
 └──────────────────────┬──────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────┐
-│  STEP 5: Human Reviews and Approves Implementation   │
+│  STEP 5: Human Reviews Implementation                │
 │  Engineer reviews the production code for:           │
-│  - SOLID compliance                                  │
 │  - Correct layer placement (no cross-layer leaks)    │
+│  - SOLID compliance                                  │
 │  - Security concerns                                 │
 │  - Code clarity and naming                           │
 │  Engineer approves (merge) or requests changes.      │
 └─────────────────────────────────────────────────────┘
 ```
 
-**No step is skipped.** Implementation does not begin until Step 3 is complete.
+**The human's two review gates:**
+1. **Before coding** — approve the interface design and behavior list (Step 1)
+2. **After all behaviors are green** — approve the final implementation (Step 5)
+
+The agent works autonomously through Steps 2–4.
 
 ---
 
-## 3. Testing Stack
+## 4. Testing Stack
 
 | Library | Role |
 |---|---|
@@ -84,7 +126,7 @@ Every feature — no matter how small — follows this exact sequence:
 
 ---
 
-## 4. Test Project Layout
+## 5. Test Project Layout
 
 ```
 RecipeBook.Domain.Tests/            # Unit tests for Domain entities and logic
@@ -96,7 +138,7 @@ RecipeBook.Blazor.Server.Tests/     # Blazor component tests (bUnit)
 
 ---
 
-## 5. Test Naming Convention
+## 6. Test Naming Convention
 
 All test methods follow this pattern:
 
@@ -118,9 +160,9 @@ CreateRecipe_WithMissingTitle_Returns422UnprocessableEntity()
 
 ---
 
-## 6. Test Coverage by Layer
+## 7. Test Coverage by Layer
 
-### 6.1 Domain Tests (`RecipeBook.Domain.Tests`)
+### 7.1 Domain Tests (`RecipeBook.Domain.Tests`)
 
 Tests for entity behavior and domain rules. **No mocks, no I/O, no DI.** Pure C# objects.
 
@@ -168,7 +210,7 @@ public class RecipeTests
 
 ---
 
-### 6.2 Application Tests (`RecipeBook.Application.Tests`)
+### 7.2 Application Tests (`RecipeBook.Application.Tests`)
 
 Tests for use-case handlers (CQRS commands/queries or service methods). **Mocked repository interfaces.** No database, no HTTP.
 
@@ -221,7 +263,7 @@ public class ForkRecipeHandlerTests
 
 ---
 
-### 6.3 Infrastructure Tests (`RecipeBook.Infrastructure.Tests`)
+### 7.3 Infrastructure Tests (`RecipeBook.Infrastructure.Tests`)
 
 Integration tests against a real PostgreSQL database spun up in a Docker container via Testcontainers.
 
@@ -263,7 +305,7 @@ public class RecipeRepositoryTests : IAsyncLifetime
 
 ---
 
-### 6.4 API Tests (`RecipeBook.Api.Tests`)
+### 7.4 API Tests (`RecipeBook.Api.Tests`)
 
 Integration tests using `WebApplicationFactory<Program>`. Tests the full HTTP request/response pipeline including routing, model binding, authorization, and response serialization.
 
@@ -294,7 +336,7 @@ public class RecipesControllerTests : IClassFixture<RecipeBookApiFactory>
 
 ---
 
-### 6.5 Blazor Component Tests (`RecipeBook.Blazor.Server.Tests`)
+### 7.5 Blazor Component Tests (`RecipeBook.Blazor.Server.Tests`)
 
 Tests using bUnit. Test component rendering and interactive behavior.
 
@@ -324,7 +366,7 @@ public class ServingSizeScalerTests : TestContext
 
 ---
 
-## 7. Test Factories & Helpers
+## 8. Test Factories & Helpers
 
 A shared `RecipeBook.Tests.Shared` project (not a test project itself — a class library) provides:
 
@@ -337,7 +379,7 @@ This project is referenced by all test projects.
 
 ---
 
-## 8. Continuous Integration Test Execution
+## 9. Continuous Integration Test Execution
 
 Tests are run in CI (GitHub Actions) on every push:
 - Domain + Application tests: run directly (no containers needed)
@@ -349,45 +391,50 @@ Tests are run in CI (GitHub Actions) on every push:
 
 ---
 
-## 9. What Agents Are Responsible For
+## 10. What Agents Are Responsible For
 
 When working with an agent on a feature, the agent is expected to:
 
-1. **Understand the acceptance criteria** before writing any code
-2. **Write tests first** in the correct test project, following the naming convention
-3. **Not write production code** until instructed (after human approval of tests)
-4. **Write minimum production code** — no gold-plating, no extra features
-5. **Run the tests** and iterate until all pass
-6. **Not modify tests** to make them pass — if a test is wrong, flag it for human review
-7. **Respect layer boundaries** — Domain has no dependencies, Application does not reference Infrastructure, etc.
-8. **Follow SOLID principles** in all production code
-9. **Ask before making architectural decisions** not covered by the PRD
+1. **Read the relevant PRD section** before proposing any interface or behavior list
+2. **Propose a public interface + prioritized behavior list** and wait for human approval before writing code
+3. **Work through behaviors one at a time** — one test → one implementation → next test
+4. **Write minimum production code** per cycle — no speculation, no extra features
+5. **Run tests after each GREEN step** to confirm nothing has regressed
+6. **Refactor only when all behaviors are GREEN** — never while RED
+7. **Not modify a test to make it pass** — if a test is wrong, flag it for human review
+8. **Respect layer boundaries** — Domain has no dependencies, Application does not reference Infrastructure, etc.
+9. **Follow SOLID principles** in all production code
+10. **Ask before making architectural decisions** not covered by the PRD
 
 ---
 
-## 10. Prompting the Agent
+## 11. Prompting the Agent
 
-When starting a new feature, provide the agent with:
+**Step 1 — Planning prompt (start of a new unit of work):**
 
 ```
 Feature: [feature name]
 PRD reference: [section in the relevant PRD doc]
 Layer: [Domain | Application | Infrastructure | API | Blazor]
-Acceptance criteria:
-  - [criterion 1]
-  - [criterion 2]
-  - [edge case 1]
 
-Task: Write the tests for this feature only. Do not write production code.
-Follow the test naming convention from PRD 06.
-Reference the test project: RecipeBook.[Layer].Tests/
+Read the PRD section and propose:
+1. The public interface (class/method signatures, constructor parameters, return types)
+2. A prioritized list of behaviors to test
+
+Do not write any code yet. Wait for approval.
 ```
 
-After human approval of the tests:
+**Step 2 — Execution prompt (after human approves the interface + behavior list):**
 
 ```
-The tests for [feature] have been approved. 
-Now implement the production code to make all tests pass.
-Do not add any functionality beyond what the tests require.
-Reference layer: [layer].
+The interface and behavior list are approved.
+Start TDD: tracer bullet first, then work through the behavior list one test at a time.
+One test → minimal implementation → next test.
+Refactor after all behaviors are green. Show me the final result when done.
+```
+
+**If a behavior is unclear during the loop:**
+```
+Pause. I'm unsure how to test [specific behavior] — the PRD says [quote].
+How should this behave when [edge case]?
 ```

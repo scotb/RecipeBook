@@ -5,11 +5,11 @@
 | Attribute | Value |
 |---|---|
 | Project | `RecipeBook.Blazor.Server` |
-| Framework | Blazor Server (.NET 10) |
-| Render mode | Interactive Server (SignalR circuit) |
-| CSS framework | Bootstrap 5 (or equivalent utility-first — decision before implementation) |
-| Auth | ASP.NET Core cookie auth (backed by the same Identity/OAuth system as the API) |
-| API calls | `HttpClient` injected via DI, pointing at `RecipeBook.Api` with JWT from circuit state |
+| Framework | Blazor Web App (.NET 10) |
+| Render mode | Static SSR for `/` (landing page) · Interactive Server (SignalR circuit) for all authenticated pages |
+| CSS / component framework | **MudBlazor** (Material Design component library — pure Blazor, no JS dependencies, no npm build step) |
+| Auth | Circuit-scoped `AuthStateService` (implements `AuthenticationStateProvider`); JWT stored in server-side circuit memory — never in browser storage |
+| API calls | Typed service interfaces (`IRecipeApiService`, `IMealPlanApiService`) wrapping `HttpClient`; JWT injected via `JwtAuthorizationMessageHandler` DelegatingHandler |
 
 ---
 
@@ -293,12 +293,18 @@ Fractions display: V1 displays decimal values rounded to 2 decimal places (e.g.,
 
 ## 6. Authentication State in Blazor Server
 
-- An `AuthStateService` is registered as a scoped service per circuit.
-- It holds the current user's claims principal and JWT.
-- It exposes a `CurrentUser` property and a `UserChanged` event for reactive UI updates.
-- On login, the auth callback page calls `AuthStateService.SetUser()`.
-- On logout, `AuthStateService.ClearUser()` is called and the user is redirected to `/`.
-- The `CascadingAuthenticationState` component at the root propagates the state to all child components.
+- `AuthStateService` is registered as a **scoped service per SignalR circuit** (one instance per connected user).
+- Implements `AuthenticationStateProvider` — registered as the provider in DI so `CascadingAuthenticationState` and `AuthorizeView` work automatically.
+- Stores the JWT string and the parsed `ClaimsPrincipal` in server-side circuit memory. **Never stored in browser `localStorage` or `sessionStorage`** (XSS risk).
+- Public interface:
+  - `SetUser(string jwt)` — parses claims from the JWT, stores both, raises `AuthenticationStateChanged`
+  - `ClearUser()` — resets to anonymous principal, raises `AuthenticationStateChanged`
+  - `GetAuthenticationStateAsync()` — returns current `AuthenticationState` (required by the interface)
+  - `GetJwt()` — returns the raw JWT string for use by `JwtAuthorizationMessageHandler`
+- On login: `/auth/callback` page reads `#token=...` from the URL fragment via JS interop, then calls `AuthStateService.SetUser(token)`.
+- On logout: AppNavMenu calls `AuthStateService.ClearUser()` then navigates to `/`.
+- `JwtAuthorizationMessageHandler` (DelegatingHandler): reads JWT from `AuthStateService` and adds `Authorization: Bearer {token}` to all outgoing `HttpClient` requests.
+- `CascadingAuthenticationState` at the root propagates state to all child components.
 
 ---
 
