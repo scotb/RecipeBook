@@ -11,7 +11,7 @@ public abstract record RecipePayload
     public int? CookTimeMinutes { get; init; }
     public required int ServingSize { get; init; }
     public required RecipeCategory Category { get; init; }
-    public RecipeVisibility Visibility { get; init; } = RecipeVisibility.Private;
+    public RecipeVisibility? Visibility { get; init; }
     public decimal? CaloriesPerServing { get; init; }
     public decimal? ProteinGrams { get; init; }
     public decimal? CarbsGrams { get; init; }

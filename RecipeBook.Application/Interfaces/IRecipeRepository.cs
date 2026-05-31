@@ -6,6 +6,7 @@ namespace RecipeBook.Application.Interfaces;
 public interface IRecipeRepository
 {
     Task<Recipe?> GetByIdAsync(Guid id, CancellationToken ct = default);
+    Task<IReadOnlyList<Recipe>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
     Task<PagedResult<Recipe>> GetPublicAsync(RecipeQuery query, CancellationToken ct = default);
     Task<PagedResult<Recipe>> GetByOwnerAsync(string ownerId, RecipeQuery query, CancellationToken ct = default);
     Task<PagedResult<Recipe>> GetAllAsync(AdminRecipeQuery query, CancellationToken ct = default);

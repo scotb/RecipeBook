@@ -892,4 +892,37 @@ public class RecipeTests
 
         recipe.Tags.Should().BeEmpty();
     }
+
+    [Fact]
+    public void ClearIngredients_WhenAlreadyEmpty_DoesNotUpdateUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+        var updatedAt = recipe.UpdatedAt;
+
+        recipe.ClearIngredients();
+
+        recipe.UpdatedAt.Should().Be(updatedAt);
+    }
+
+    [Fact]
+    public void ClearSteps_WhenAlreadyEmpty_DoesNotUpdateUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+        var updatedAt = recipe.UpdatedAt;
+
+        recipe.ClearSteps();
+
+        recipe.UpdatedAt.Should().Be(updatedAt);
+    }
+
+    [Fact]
+    public void ClearTags_WhenAlreadyEmpty_DoesNotUpdateUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+        var updatedAt = recipe.UpdatedAt;
+
+        recipe.ClearTags();
+
+        recipe.UpdatedAt.Should().Be(updatedAt);
+    }
 }

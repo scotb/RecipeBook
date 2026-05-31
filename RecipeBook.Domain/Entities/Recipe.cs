@@ -261,18 +261,24 @@ public sealed class Recipe
 
     public void ClearIngredients()
     {
+        if (!_ingredients.Any())
+            return;
         _ingredients.Clear();
         TouchUpdatedAt();
     }
 
     public void ClearSteps()
     {
+        if (!_steps.Any())
+            return;
         _steps.Clear();
         TouchUpdatedAt();
     }
 
     public void ClearTags()
     {
+        if (!_tags.Any())
+            return;
         _tags.Clear();
         TouchUpdatedAt();
     }

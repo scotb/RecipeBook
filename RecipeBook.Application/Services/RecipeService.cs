@@ -66,7 +66,7 @@ public sealed class RecipeService : IRecipeService
             imageUrl: request.ImageUrl,
             prepTimeMinutes: request.PrepTimeMinutes,
             cookTimeMinutes: request.CookTimeMinutes,
-            visibility: request.Visibility,
+            visibility: request.Visibility ?? RecipeVisibility.Private,
             caloriesPerServing: request.CaloriesPerServing,
             proteinGrams: request.ProteinGrams,
             carbsGrams: request.CarbsGrams,
@@ -132,14 +132,17 @@ public sealed class RecipeService : IRecipeService
                 recipe.AddStep(step.Body, step.Title);
         }
 
-        if (request.Visibility == RecipeVisibility.Private)
-            recipe.MakePrivate();
-        else if (request.Visibility == RecipeVisibility.PendingReview)
-            recipe.SubmitForReview();
-        else if (request.Visibility == RecipeVisibility.Public && isAdmin)
-            recipe.Approve();
-        else if (request.Visibility == RecipeVisibility.Public)
-            throw new ForbiddenException("Only admins can publish a recipe directly.");
+        if (request.Visibility is not null)
+        {
+            if (request.Visibility == RecipeVisibility.Private)
+                recipe.MakePrivate();
+            else if (request.Visibility == RecipeVisibility.PendingReview)
+                recipe.SubmitForReview();
+            else if (request.Visibility == RecipeVisibility.Public && isAdmin)
+                recipe.Approve();
+            else if (request.Visibility == RecipeVisibility.Public)
+                throw new ForbiddenException("Only admins can publish a recipe directly.");
+        }
 
         await _recipeRepository.UpdateAsync(recipe, ct);
 

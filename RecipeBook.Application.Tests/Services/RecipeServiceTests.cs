@@ -483,4 +483,20 @@ public class RecipeServiceTests
         recipe.Visibility.Should().Be(RecipeVisibility.Public);
     }
 
+    [Fact]
+    public async Task UpdateAsync_WhenVisibilityNotSpecified_DoesNotChangeExistingVisibility()
+    {
+        var recipe = new Recipe("Pasta", "user-1", 2, RecipeCategory.Dinner, visibility: RecipeVisibility.PendingReview);
+        _repoMock.Setup(r => r.GetByIdAsync(recipe.Id, It.IsAny<CancellationToken>())).ReturnsAsync(recipe);
+        _repoMock.Setup(r => r.UpdateAsync(recipe, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        _userLookupMock.Setup(u => u.GetDisplayNameAsync("user-1", It.IsAny<CancellationToken>())).ReturnsAsync("User");
+
+        // No Visibility set — omitted from request
+        var request = new UpdateRecipeRequest { Title = "Pasta", ServingSize = 2, Category = RecipeCategory.Dinner };
+
+        await _sut.UpdateAsync(recipe.Id, request, requestingUserId: "user-1");
+
+        recipe.Visibility.Should().Be(RecipeVisibility.PendingReview);
+    }
+
 }

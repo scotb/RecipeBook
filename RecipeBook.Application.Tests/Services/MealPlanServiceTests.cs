@@ -21,6 +21,11 @@ public class MealPlanServiceTests
     public MealPlanServiceTests()
     {
         _sut = new MealPlanService(_mealPlanRepoMock.Object, _recipeRepoMock.Object);
+
+        // Default: batch fetch returns empty list (tests with entries override this)
+        _recipeRepoMock
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
     }
 
     // ── CreateAsync ──────────────────────────────────────────────────────────
@@ -276,5 +281,27 @@ public class MealPlanServiceTests
 
         await act.Should().ThrowAsync<ForbiddenException>();
         _mealPlanRepoMock.Verify(r => r.UpdateAsync(It.IsAny<MealPlan>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ── LoadRecipeMapAsync (batch fetching) ───────────────────────────────────
+
+    [Fact]
+    public async Task GetByIdAsync_WhenPlanHasMultipleEntries_UsesBatchFetch()
+    {
+        var recipe1 = new Recipe("Pasta", "owner-1", 2, RecipeCategory.Dinner, visibility: RecipeVisibility.Public);
+        var recipe2 = new Recipe("Salad", "owner-1", 1, RecipeCategory.Lunch, visibility: RecipeVisibility.Public);
+        var plan = new MealPlan("user-1", NextMonday);
+        plan.SetEntry(DayOfWeek.Monday, MealSlot.Dinner, recipe1.Id, 2);
+        plan.SetEntry(DayOfWeek.Tuesday, MealSlot.Lunch, recipe2.Id, 1);
+
+        _mealPlanRepoMock.Setup(r => r.GetByIdAsync(plan.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
+        _recipeRepoMock
+            .Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([recipe1, recipe2]);
+
+        await _sut.GetByIdAsync(plan.Id, requestingUserId: "user-1");
+
+        _recipeRepoMock.Verify(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()), Times.Once);
+        _recipeRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
