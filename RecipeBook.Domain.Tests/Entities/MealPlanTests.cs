@@ -101,13 +101,39 @@ public class MealPlanTests
     }
 
     [Fact]
-    public void SetEntry_WithNullServingCount_DefaultsServingCountToOne()
+    public void SetEntry_WithNullServingCountOnNewEntry_ThrowsArgumentException()
     {
         var plan = MakePlan();
 
-        plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, Guid.NewGuid(), servingCount: null);
+        var act = () => plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, Guid.NewGuid(), servingCount: null);
 
-        plan.Entries.Single().ServingCount.Should().Be(1);
+        act.Should().Throw<ArgumentException>().WithParameterName("servingCount");
+    }
+
+    [Fact]
+    public void SetEntry_WithNullRecipeIdAndNullServingCount_DoesNotThrow()
+    {
+        var plan = MakePlan();
+        plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, Guid.NewGuid(), servingCount: 2);
+
+        var act = () => plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, recipeId: null, servingCount: null);
+
+        act.Should().NotThrow();
+        plan.Entries.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void SetEntry_WithNullServingCountOnUpdate_PreservesExistingServingCount()
+    {
+        var plan = MakePlan();
+        var newRecipeId = Guid.NewGuid();
+        plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, Guid.NewGuid(), servingCount: 5);
+
+        plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, newRecipeId, servingCount: null);
+
+        var entry = plan.Entries.Single();
+        entry.RecipeId.Should().Be(newRecipeId);
+        entry.ServingCount.Should().Be(5);
     }
 
     [Fact]
@@ -201,9 +227,9 @@ public class MealPlanTests
     {
         var plan = MakePlan();
 
-        plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, Guid.NewGuid());
-        plan.SetEntry(DayOfWeek.Tuesday, MealSlot.Lunch, Guid.NewGuid());
-        plan.SetEntry(DayOfWeek.Friday, MealSlot.Dinner, Guid.NewGuid());
+        plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, Guid.NewGuid(), servingCount: 2);
+        plan.SetEntry(DayOfWeek.Tuesday, MealSlot.Lunch, Guid.NewGuid(), servingCount: 2);
+        plan.SetEntry(DayOfWeek.Friday, MealSlot.Dinner, Guid.NewGuid(), servingCount: 2);
 
         plan.Entries.Should().HaveCount(3);
     }
@@ -215,8 +241,8 @@ public class MealPlanTests
         var breakfastId = Guid.NewGuid();
         var dinnerId = Guid.NewGuid();
 
-        plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, breakfastId);
-        plan.SetEntry(DayOfWeek.Monday, MealSlot.Dinner, dinnerId);
+        plan.SetEntry(DayOfWeek.Monday, MealSlot.Breakfast, breakfastId, servingCount: 2);
+        plan.SetEntry(DayOfWeek.Monday, MealSlot.Dinner, dinnerId, servingCount: 2);
 
         plan.Entries.Should().HaveCount(2);
         plan.Entries.Single(e => e.MealSlot == MealSlot.Breakfast).RecipeId.Should().Be(breakfastId);

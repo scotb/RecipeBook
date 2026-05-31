@@ -47,11 +47,15 @@ public sealed class MealPlan
         if (existing is not null)
         {
             existing.RecipeId = recipeId;
-            existing.ServingCount = servingCount ?? 1;
+            if (servingCount.HasValue)
+                existing.ServingCount = servingCount.Value;
         }
         else
         {
-            _entries.Add(new MealEntry(Id, day, slot, recipeId.Value, servingCount ?? 1));
+            if (!servingCount.HasValue)
+                throw new ArgumentException("servingCount is required when adding a new entry.", nameof(servingCount));
+
+            _entries.Add(new MealEntry(Id, day, slot, recipeId.Value, servingCount.Value));
         }
     }
 

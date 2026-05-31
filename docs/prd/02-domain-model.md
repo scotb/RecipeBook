@@ -163,7 +163,7 @@ Unique constraint: `(RecipeId, Name)` — no duplicate tags on the same recipe.
 | `Entries` | `IReadOnlyList<MealEntry>` | Yes | 28 possible slots (7 days × 4 slots); sparse |
 
 **Domain methods:**
-- `SetEntry(DayOfWeek day, MealSlot slot, Guid? recipeId, int? servingCount)` — upserts a meal entry for a slot; passing `null` for `recipeId` clears the slot
+- `SetEntry(DayOfWeek day, MealSlot slot, Guid? recipeId, int? servingCount)` — upserts a meal entry for a slot; passing `null` for `recipeId` clears the slot. When adding a **new** entry, `servingCount` is required (throws if null — the Application layer must resolve the recipe's `ServingSize` as the default). When **updating** an existing entry, `null` preserves the current `ServingCount`.
 - `ClearEntry(DayOfWeek day, MealSlot slot)` — removes the entry if present
 - Validation: `WeekStartDate` must be a Monday (`DayOfWeek.Monday`)
 
@@ -180,7 +180,7 @@ Unique constraint: `(RecipeId, Name)` — no duplicate tags on the same recipe.
 | `DayOfWeek` | `DayOfWeek` | Yes | Monday–Sunday |
 | `MealSlot` | `MealSlot` | Yes | Breakfast, Lunch, Dinner, or Snack |
 | `RecipeId` | `Guid?` | No | FK → `Recipe.Id`; null = empty slot |
-| `ServingCount` | `int` | Yes | Default: recipe's `ServingSize`; min 1 |
+| `ServingCount` | `int` | Yes | Min 1; required when adding a new entry (Domain throws if omitted — Application layer resolves the recipe's `ServingSize` as the default); optional on update (null preserves the existing value) |
 
 **Unique constraint:** `(MealPlanId, DayOfWeek, MealSlot)` — one entry per slot per day per plan.
 
