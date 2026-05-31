@@ -242,4 +242,39 @@ public class MealPlanServiceTests
 
         result.ServingCount.Should().Be(4); // defaulted to recipe.ServingSize
     }
+
+    // ── SetEntryAsync (recipe access control) ────────────────────────────────
+
+    [Fact]
+    public async Task SetEntryAsync_WhenRecipeIsPrivateAndOwnedByRequestingUser_Succeeds()
+    {
+        var plan = new MealPlan("user-1", NextMonday);
+        var recipe = new Recipe("My Private Recipe", "user-1", 2, RecipeCategory.Dinner, visibility: RecipeVisibility.Private);
+
+        _mealPlanRepoMock.Setup(r => r.GetByIdAsync(plan.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
+        _recipeRepoMock.Setup(r => r.GetByIdAsync(recipe.Id, It.IsAny<CancellationToken>())).ReturnsAsync(recipe);
+
+        var request = new SetMealEntryRequest(DayOfWeek.Monday, MealSlot.Dinner, recipe.Id, ServingCount: 2);
+
+        var act = () => _sut.SetEntryAsync(plan.Id, request, requestingUserId: "user-1");
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [Fact]
+    public async Task SetEntryAsync_WhenRecipeIsPrivateAndNotOwnedByRequestingUser_ThrowsForbiddenException()
+    {
+        var plan = new MealPlan("user-1", NextMonday);
+        var recipe = new Recipe("Someone Else's Recipe", "owner-2", 2, RecipeCategory.Dinner, visibility: RecipeVisibility.Private);
+
+        _mealPlanRepoMock.Setup(r => r.GetByIdAsync(plan.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
+        _recipeRepoMock.Setup(r => r.GetByIdAsync(recipe.Id, It.IsAny<CancellationToken>())).ReturnsAsync(recipe);
+
+        var request = new SetMealEntryRequest(DayOfWeek.Monday, MealSlot.Dinner, recipe.Id, ServingCount: 2);
+
+        var act = () => _sut.SetEntryAsync(plan.Id, request, requestingUserId: "user-1");
+
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _mealPlanRepoMock.Verify(r => r.UpdateAsync(It.IsAny<MealPlan>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

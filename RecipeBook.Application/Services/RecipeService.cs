@@ -136,7 +136,9 @@ public sealed class RecipeService : IRecipeService
             recipe.MakePrivate();
         else if (request.Visibility == RecipeVisibility.PendingReview)
             recipe.SubmitForReview();
-        else if (request.Visibility == RecipeVisibility.Public && !isAdmin)
+        else if (request.Visibility == RecipeVisibility.Public && isAdmin)
+            recipe.Approve();
+        else if (request.Visibility == RecipeVisibility.Public)
             throw new ForbiddenException("Only admins can publish a recipe directly.");
 
         await _recipeRepository.UpdateAsync(recipe, ct);

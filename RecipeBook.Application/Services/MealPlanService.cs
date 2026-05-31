@@ -79,6 +79,9 @@ public sealed class MealPlanService : IMealPlanService
         var recipe = await _recipeRepository.GetByIdAsync(request.RecipeId, ct)
             ?? throw new NotFoundException($"Recipe '{request.RecipeId}' not found.");
 
+        if (recipe.Visibility != RecipeVisibility.Public && recipe.OwnerId != requestingUserId)
+            throw new ForbiddenException("You do not have permission to add this recipe to a meal plan.");
+
         var servingCount = request.ServingCount ?? recipe.ServingSize;
         plan.SetEntry(request.DayOfWeek, request.MealSlot, request.RecipeId, servingCount);
         await _mealPlanRepository.UpdateAsync(plan, ct);
