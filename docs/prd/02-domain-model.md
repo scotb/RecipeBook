@@ -36,10 +36,13 @@ public enum RecipeCategory
 // Namespace: RecipeBook.Domain.Enums
 public enum RecipeVisibility
 {
-    Private,  // Visible only to the owner
-    Public    // Visible to all authenticated users (catalog when owner is admin)
+    Private,       // Visible only to the owner
+    PendingReview, // Submitted by the owner; awaiting admin approval
+    Public         // Approved by an admin; visible to all authenticated users
 }
 ```
+
+> **Approval workflow:** Any user may call `SubmitForReview()` to move a recipe from `Private` or `Public` to `PendingReview`. Only an admin may call `Approve()` (→ `Public`) or `Reject(reason)` (→ `Private`). Rejection stores the reason in `RejectionReason`.
 
 ### `MealSlot`
 ```csharp
@@ -79,7 +82,8 @@ public enum MealSlot
 | `CarbsGrams` | `decimal?` | No | Optional; positive |
 | `FatGrams` | `decimal?` | No | Optional; positive |
 | `CreatedAt` | `DateTimeOffset` | Yes | Set on creation, UTC |
-| `UpdatedAt` | `DateTimeOffset` | Yes | Updated on every save, UTC |
+| `UpdatedAt` | `DateTimeOffset` | Yes | Updated on every mutating call, UTC; guaranteed monotonically increasing |
+| `RejectionReason` | `string?` | No | Set by `Reject(reason)`; cleared by `Approve()` or `SubmitForReview()` |
 | `Ingredients` | `IReadOnlyList<Ingredient>` | Yes | Child collection; empty by default |
 | `Steps` | `IReadOnlyList<RecipeStep>` | Yes | Child collection; empty by default |
 | `Tags` | `IReadOnlyList<RecipeTag>` | Yes | Child collection; empty by default |
@@ -88,11 +92,14 @@ public enum MealSlot
 - `AddIngredient(...)` — validates and adds an ingredient, enforcing sort order
 - `RemoveIngredient(Guid ingredientId)` — removes ingredient and re-sequences sort order
 - `AddStep(...)` — validates and appends a step
-- `ReorderSteps(IEnumerable<Guid> orderedStepIds)` — re-sequences step sort order
-- `AddTag(string name)` — adds a tag (case-insensitive deduplication)
-- `RemoveTag(string name)` — removes a tag by name
-- `MakePublic()` / `MakePrivate()` — visibility control
-- `Fork(string newOwnerId)` — returns a new `Recipe` with `SourceRecipeId` set, `Visibility = Private`
+- `ReorderSteps(IEnumerable<Guid> orderedStepIds)` — re-sequences step sort order; throws if IDs don't exactly match the current step set
+- `AddTag(string name)` — adds a tag (normalized to lowercase/trimmed; case-insensitive deduplication)
+- `RemoveTag(string name)` — removes a tag by name (no-op if not found)
+- `SubmitForReview()` — transitions `Private` or `Public` → `PendingReview`; no-op if already `PendingReview`; clears `RejectionReason`
+- `Approve()` — transitions `PendingReview` → `Public`; throws if not pending; clears `RejectionReason`
+- `Reject(string reason)` — transitions `PendingReview` → `Private`; throws if not pending; sets `RejectionReason`
+- `MakePrivate()` — transitions any visibility → `Private`; no-op if already `Private`
+- `Fork(string newOwnerId)` — returns a new `Recipe` with `SourceRecipeId` set, `Visibility = Private`, deep-copied child collections
 
 ---
 
@@ -156,7 +163,7 @@ Unique constraint: `(RecipeId, Name)` — no duplicate tags on the same recipe.
 | `Entries` | `IReadOnlyList<MealEntry>` | Yes | 28 possible slots (7 days × 4 slots); sparse |
 
 **Domain methods:**
-- `SetEntry(DayOfWeek day, MealSlot slot, Guid? recipeId, int? servingCount)` — upserts a meal entry for a slot; passing `null` for `recipeId` clears the slot
+- `SetEntry(DayOfWeek day, MealSlot slot, Guid? recipeId, int? servingCount)` — upserts a meal entry for a slot; passing `null` for `recipeId` clears the slot. When adding a **new** entry, `servingCount` is required (throws if null — the Application layer must resolve the recipe's `ServingSize` as the default). When **updating** an existing entry, `null` preserves the current `ServingCount`.
 - `ClearEntry(DayOfWeek day, MealSlot slot)` — removes the entry if present
 - Validation: `WeekStartDate` must be a Monday (`DayOfWeek.Monday`)
 
@@ -172,8 +179,8 @@ Unique constraint: `(RecipeId, Name)` — no duplicate tags on the same recipe.
 | `MealPlanId` | `Guid` | Yes | FK → `MealPlan.Id` |
 | `DayOfWeek` | `DayOfWeek` | Yes | Monday–Sunday |
 | `MealSlot` | `MealSlot` | Yes | Breakfast, Lunch, Dinner, or Snack |
-| `RecipeId` | `Guid?` | No | FK → `Recipe.Id`; null = empty slot |
-| `ServingCount` | `int` | Yes | Default: recipe's `ServingSize`; min 1 |
+| `RecipeId` | `Guid` | Yes | FK → `Recipe.Id`; empty slots are represented by the absence of a `MealEntry` |
+| `ServingCount` | `int` | Yes | Min 1; required when adding a new entry (Domain throws if omitted — Application layer resolves the recipe's `ServingSize` as the default); optional on update (null preserves the existing value) |
 
 **Unique constraint:** `(MealPlanId, DayOfWeek, MealSlot)` — one entry per slot per day per plan.
 
