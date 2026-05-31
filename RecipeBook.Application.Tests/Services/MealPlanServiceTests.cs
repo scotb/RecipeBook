@@ -304,4 +304,15 @@ public class MealPlanServiceTests
         _recipeRepoMock.Verify(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()), Times.Once);
         _recipeRepoMock.Verify(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task GetByIdAsync_WhenPlanHasNoEntries_DoesNotCallGetByIdsAsync()
+    {
+        var plan = new MealPlan("user-1", NextMonday, "Empty Plan");
+        _mealPlanRepoMock.Setup(r => r.GetByIdAsync(plan.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
+
+        await _sut.GetByIdAsync(plan.Id, requestingUserId: "user-1");
+
+        _recipeRepoMock.Verify(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

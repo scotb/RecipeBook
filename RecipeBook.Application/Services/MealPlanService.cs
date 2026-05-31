@@ -136,6 +136,8 @@ public sealed class MealPlanService : IMealPlanService
     private async Task<IReadOnlyDictionary<Guid, Recipe>> LoadRecipeMapAsync(MealPlan plan, CancellationToken ct)
     {
         var uniqueIds = plan.Entries.Select(e => e.RecipeId).Distinct().ToList();
+        if (uniqueIds.Count == 0)
+            return new Dictionary<Guid, Recipe>();
         var recipes = await _recipeRepository.GetByIdsAsync(uniqueIds, ct);
         return recipes.ToDictionary(r => r.Id);
     }
