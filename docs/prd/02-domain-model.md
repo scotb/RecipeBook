@@ -99,6 +99,7 @@ public enum MealSlot
 - `Approve()` — transitions `PendingReview` → `Public`; throws if not pending; clears `RejectionReason`
 - `Reject(string reason)` — transitions `PendingReview` → `Private`; throws if not pending; sets `RejectionReason`
 - `MakePrivate()` — transitions any visibility → `Private`; no-op if already `Private`
+- `Update(string title, int servingSize, RecipeCategory category, ...)` — mutates all scalar properties (title, servingSize, category, description, imageUrl, prepTimeMinutes, cookTimeMinutes, nutrition fields); applies same validation rules as the constructor; calls `TouchUpdatedAt()`
 - `Fork(string newOwnerId)` — returns a new `Recipe` with `SourceRecipeId` set, `Visibility = Private`, deep-copied child collections
 
 ---
@@ -165,6 +166,7 @@ Unique constraint: `(RecipeId, Name)` — no duplicate tags on the same recipe.
 **Domain methods:**
 - `SetEntry(DayOfWeek day, MealSlot slot, Guid? recipeId, int? servingCount)` — upserts a meal entry for a slot; passing `null` for `recipeId` clears the slot. When adding a **new** entry, `servingCount` is required (throws if null — the Application layer must resolve the recipe's `ServingSize` as the default). When **updating** an existing entry, `null` preserves the current `ServingCount`.
 - `ClearEntry(DayOfWeek day, MealSlot slot)` — removes the entry if present
+- `Rename(string? name)` — updates the optional plan name; max 100 chars; `null` clears it
 - Validation: `WeekStartDate` must be a Monday (`DayOfWeek.Monday`)
 
 ---
@@ -211,6 +213,7 @@ Defined in `RecipeBook.Application.Interfaces`. Implemented in `RecipeBook.Infra
 Task<Recipe?> GetByIdAsync(Guid id, CancellationToken ct = default);
 Task<PagedResult<Recipe>> GetPublicAsync(RecipeQuery query, CancellationToken ct = default);
 Task<PagedResult<Recipe>> GetByOwnerAsync(string ownerId, RecipeQuery query, CancellationToken ct = default);
+Task<PagedResult<Recipe>> GetAllAsync(AdminRecipeQuery query, CancellationToken ct = default);
 Task<Recipe> AddAsync(Recipe recipe, CancellationToken ct = default);
 Task UpdateAsync(Recipe recipe, CancellationToken ct = default);
 Task DeleteAsync(Guid id, CancellationToken ct = default);
@@ -232,6 +235,13 @@ public record RecipeQuery(
     string? SearchText = null,
     RecipeCategory? Category = null,
     IReadOnlyList<string>? Tags = null,
+    int Page = 1,
+    int PageSize = 20
+);
+
+public record AdminRecipeQuery(
+    string? SearchText = null,
+    string? OwnerId = null,
     int Page = 1,
     int PageSize = 20
 );

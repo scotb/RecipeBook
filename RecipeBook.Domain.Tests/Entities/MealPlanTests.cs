@@ -252,4 +252,36 @@ public class MealPlanTests
     // ── helpers ─────────────────────────────────────────────────────────────
 
     private static MealPlan MakePlan() => new("user-123", new DateOnly(2026, 6, 1));
+
+    // ── Rename ───────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Rename_WithValidName_SetsName()
+    {
+        var plan = MakePlan();
+
+        plan.Rename("My Week");
+
+        plan.Name.Should().Be("My Week");
+    }
+
+    [Fact]
+    public void Rename_WithNull_ClearsName()
+    {
+        var plan = new MealPlan("user-1", new DateOnly(2026, 6, 1), "Old Name");
+
+        plan.Rename(null);
+
+        plan.Name.Should().BeNull();
+    }
+
+    [Fact]
+    public void Rename_WithNameExceeding100Chars_ThrowsArgumentException()
+    {
+        var plan = MakePlan();
+
+        var act = () => plan.Rename(new string('x', 101));
+
+        act.Should().Throw<ArgumentException>();
+    }
 }

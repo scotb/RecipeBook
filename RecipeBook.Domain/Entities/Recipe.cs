@@ -211,6 +211,53 @@ public sealed class Recipe
         }
     }
 
+    public void Update(
+        string title,
+        int servingSize,
+        RecipeCategory category,
+        string? description = null,
+        string? imageUrl = null,
+        int? prepTimeMinutes = null,
+        int? cookTimeMinutes = null,
+        decimal? caloriesPerServing = null,
+        decimal? proteinGrams = null,
+        decimal? carbsGrams = null,
+        decimal? fatGrams = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentOutOfRangeException.ThrowIfLessThan(servingSize, 1);
+        ThrowIfExceedsMaxLength(title, 200, nameof(title));
+
+        if (prepTimeMinutes is not null)
+            ArgumentOutOfRangeException.ThrowIfLessThan(prepTimeMinutes.Value, 1, nameof(prepTimeMinutes));
+
+        if (cookTimeMinutes is not null)
+            ArgumentOutOfRangeException.ThrowIfLessThan(cookTimeMinutes.Value, 1, nameof(cookTimeMinutes));
+
+        ThrowIfNonPositive(caloriesPerServing, nameof(caloriesPerServing));
+        ThrowIfNonPositive(proteinGrams, nameof(proteinGrams));
+        ThrowIfNonPositive(carbsGrams, nameof(carbsGrams));
+        ThrowIfNonPositive(fatGrams, nameof(fatGrams));
+
+        if (imageUrl is not null &&
+            (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri) ||
+             (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)))
+            throw new ArgumentException("ImageUrl must be a valid absolute HTTP or HTTPS URL.", nameof(imageUrl));
+
+        Title = title;
+        ServingSize = servingSize;
+        Category = category;
+        Description = description;
+        ImageUrl = imageUrl;
+        PrepTimeMinutes = prepTimeMinutes;
+        CookTimeMinutes = cookTimeMinutes;
+        CaloriesPerServing = caloriesPerServing;
+        ProteinGrams = proteinGrams;
+        CarbsGrams = carbsGrams;
+        FatGrams = fatGrams;
+        TouchUpdatedAt();
+    }
+
     public Recipe Fork(string newOwnerId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(newOwnerId);
