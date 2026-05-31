@@ -46,7 +46,7 @@ public sealed class MealPlan
 
         if (existing is not null)
         {
-            existing.RecipeId = recipeId;
+            existing.RecipeId = recipeId!.Value;
             if (servingCount.HasValue)
                 existing.ServingCount = servingCount.Value;
         }

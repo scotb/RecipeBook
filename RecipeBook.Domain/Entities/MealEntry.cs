@@ -18,6 +18,6 @@ public sealed class MealEntry
     public Guid MealPlanId { get; }
     public DayOfWeek DayOfWeek { get; }
     public MealSlot MealSlot { get; }
-    public Guid? RecipeId { get; internal set; }
+    public Guid RecipeId { get; internal set; }
     public int ServingCount { get; internal set; }
 }

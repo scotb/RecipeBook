@@ -179,7 +179,7 @@ Unique constraint: `(RecipeId, Name)` — no duplicate tags on the same recipe.
 | `MealPlanId` | `Guid` | Yes | FK → `MealPlan.Id` |
 | `DayOfWeek` | `DayOfWeek` | Yes | Monday–Sunday |
 | `MealSlot` | `MealSlot` | Yes | Breakfast, Lunch, Dinner, or Snack |
-| `RecipeId` | `Guid?` | No | FK → `Recipe.Id`; null = empty slot |
+| `RecipeId` | `Guid` | Yes | FK → `Recipe.Id`; empty slots are represented by the absence of a `MealEntry` |
 | `ServingCount` | `int` | Yes | Min 1; required when adding a new entry (Domain throws if omitted — Application layer resolves the recipe's `ServingSize` as the default); optional on update (null preserves the existing value) |
 
 **Unique constraint:** `(MealPlanId, DayOfWeek, MealSlot)` — one entry per slot per day per plan.
