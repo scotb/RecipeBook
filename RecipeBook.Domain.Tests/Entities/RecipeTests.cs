@@ -707,4 +707,222 @@ public class RecipeTests
         recipe.MakePrivate();
         recipe.UpdatedAt.Should().Be(before);
     }
+
+    [Fact]
+    public void Update_WithValidArguments_SetsPropertiesAndTouchesUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+        var before = recipe.UpdatedAt;
+
+        recipe.Update(
+            title: "Updated Title",
+            servingSize: 2,
+            category: RecipeCategory.Lunch);
+
+        recipe.Title.Should().Be("Updated Title");
+        recipe.ServingSize.Should().Be(2);
+        recipe.Category.Should().Be(RecipeCategory.Lunch);
+        recipe.UpdatedAt.Should().BeAfter(before);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Update_WithNullOrWhitespaceTitle_ThrowsArgumentException(string? title)
+    {
+        var recipe = BuildRecipe();
+
+        var act = () => recipe.Update(title!, servingSize: 1, category: RecipeCategory.Dinner);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Update_WithServingSizeLessThanOne_ThrowsArgumentOutOfRangeException(int servingSize)
+    {
+        var recipe = BuildRecipe();
+
+        var act = () => recipe.Update("Title", servingSize: servingSize, category: RecipeCategory.Dinner);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Update_WithTitleExceeding200Chars_ThrowsArgumentException()
+    {
+        var recipe = BuildRecipe();
+        var longTitle = new string('x', 201);
+
+        var act = () => recipe.Update(longTitle, servingSize: 1, category: RecipeCategory.Dinner);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Update_WithNonPositivePrepTimeMinutes_ThrowsArgumentOutOfRangeException(int prepTime)
+    {
+        var recipe = BuildRecipe();
+
+        var act = () => recipe.Update("Title", servingSize: 1, category: RecipeCategory.Dinner, prepTimeMinutes: prepTime);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public void Update_WithNonPositiveCookTimeMinutes_ThrowsArgumentOutOfRangeException(int cookTime)
+    {
+        var recipe = BuildRecipe();
+
+        var act = () => recipe.Update("Title", servingSize: 1, category: RecipeCategory.Dinner, cookTimeMinutes: cookTime);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData(nameof(Recipe.CaloriesPerServing))]
+    [InlineData(nameof(Recipe.ProteinGrams))]
+    [InlineData(nameof(Recipe.CarbsGrams))]
+    [InlineData(nameof(Recipe.FatGrams))]
+    public void Update_WithNonPositiveNutritionalValue_ThrowsArgumentOutOfRangeException(string propertyName)
+    {
+        var recipe = BuildRecipe();
+        Action act = propertyName switch
+        {
+            nameof(Recipe.CaloriesPerServing) => () => recipe.Update("Title", 1, RecipeCategory.Dinner, caloriesPerServing: -1m),
+            nameof(Recipe.ProteinGrams)       => () => recipe.Update("Title", 1, RecipeCategory.Dinner, proteinGrams: 0m),
+            nameof(Recipe.CarbsGrams)         => () => recipe.Update("Title", 1, RecipeCategory.Dinner, carbsGrams: -0.5m),
+            nameof(Recipe.FatGrams)           => () => recipe.Update("Title", 1, RecipeCategory.Dinner, fatGrams: -1m),
+            _                                 => throw new InvalidOperationException("Unexpected property")
+        };
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData("not-a-url")]
+    [InlineData("ftp://example.com/image.jpg")]
+    [InlineData("/relative/path.jpg")]
+    public void Update_WithInvalidImageUrl_ThrowsArgumentException(string imageUrl)
+    {
+        var recipe = BuildRecipe();
+
+        var act = () => recipe.Update("Title", servingSize: 1, category: RecipeCategory.Dinner, imageUrl: imageUrl);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void Update_WithNullOptionalFields_ClearsThoseFields()
+    {
+        var recipe = BuildRecipe();
+
+        recipe.Update(
+            title: "Updated",
+            servingSize: 1,
+            category: RecipeCategory.Dinner,
+            description: null,
+            imageUrl: null,
+            prepTimeMinutes: null,
+            cookTimeMinutes: null,
+            caloriesPerServing: null,
+            proteinGrams: null,
+            carbsGrams: null,
+            fatGrams: null);
+
+        recipe.Description.Should().BeNull();
+        recipe.ImageUrl.Should().BeNull();
+        recipe.PrepTimeMinutes.Should().BeNull();
+        recipe.CookTimeMinutes.Should().BeNull();
+        recipe.CaloriesPerServing.Should().BeNull();
+        recipe.ProteinGrams.Should().BeNull();
+        recipe.CarbsGrams.Should().BeNull();
+        recipe.FatGrams.Should().BeNull();
+    }
+
+    [Fact]
+    public void Update_WithDescriptionExceeding2000Chars_ThrowsArgumentException()
+    {
+        var recipe = BuildRecipe();
+
+        var act = () => recipe.Update("Title", servingSize: 1, category: RecipeCategory.Dinner,
+            description: new string('x', 2001));
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void ClearIngredients_RemovesAllIngredients()
+    {
+        var recipe = BuildRecipe();
+        recipe.AddIngredient("Flour", 200m, "g");
+        recipe.AddIngredient("Sugar", 100m, "g");
+
+        recipe.ClearIngredients();
+
+        recipe.Ingredients.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ClearSteps_RemovesAllSteps()
+    {
+        var recipe = BuildRecipe();
+        recipe.AddStep("Preheat oven");
+        recipe.AddStep("Mix ingredients");
+
+        recipe.ClearSteps();
+
+        recipe.Steps.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ClearTags_RemovesAllTags()
+    {
+        var recipe = BuildRecipe();
+        recipe.AddTag("Easy");
+        recipe.AddTag("Quick");
+
+        recipe.ClearTags();
+
+        recipe.Tags.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ClearIngredients_WhenAlreadyEmpty_DoesNotUpdateUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+        var updatedAt = recipe.UpdatedAt;
+
+        recipe.ClearIngredients();
+
+        recipe.UpdatedAt.Should().Be(updatedAt);
+    }
+
+    [Fact]
+    public void ClearSteps_WhenAlreadyEmpty_DoesNotUpdateUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+        var updatedAt = recipe.UpdatedAt;
+
+        recipe.ClearSteps();
+
+        recipe.UpdatedAt.Should().Be(updatedAt);
+    }
+
+    [Fact]
+    public void ClearTags_WhenAlreadyEmpty_DoesNotUpdateUpdatedAt()
+    {
+        var recipe = BuildRecipe();
+        var updatedAt = recipe.UpdatedAt;
+
+        recipe.ClearTags();
+
+        recipe.UpdatedAt.Should().Be(updatedAt);
+    }
 }

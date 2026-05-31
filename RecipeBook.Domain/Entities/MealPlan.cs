@@ -65,4 +65,12 @@ public sealed class MealPlan
         if (existing is not null)
             _entries.Remove(existing);
     }
+
+    public void Rename(string? name)
+    {
+        if (name is not null && name.Length > 100)
+            throw new ArgumentException("Name must not exceed 100 characters.", nameof(name));
+
+        Name = name;
+    }
 }
