@@ -845,4 +845,51 @@ public class RecipeTests
         recipe.CarbsGrams.Should().BeNull();
         recipe.FatGrams.Should().BeNull();
     }
+
+    [Fact]
+    public void Update_WithDescriptionExceeding2000Chars_ThrowsArgumentException()
+    {
+        var recipe = BuildRecipe();
+
+        var act = () => recipe.Update("Title", servingSize: 1, category: RecipeCategory.Dinner,
+            description: new string('x', 2001));
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void ClearIngredients_RemovesAllIngredients()
+    {
+        var recipe = BuildRecipe();
+        recipe.AddIngredient("Flour", 200m, "g");
+        recipe.AddIngredient("Sugar", 100m, "g");
+
+        recipe.ClearIngredients();
+
+        recipe.Ingredients.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ClearSteps_RemovesAllSteps()
+    {
+        var recipe = BuildRecipe();
+        recipe.AddStep("Preheat oven");
+        recipe.AddStep("Mix ingredients");
+
+        recipe.ClearSteps();
+
+        recipe.Steps.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ClearTags_RemovesAllTags()
+    {
+        var recipe = BuildRecipe();
+        recipe.AddTag("Easy");
+        recipe.AddTag("Quick");
+
+        recipe.ClearTags();
+
+        recipe.Tags.Should().BeEmpty();
+    }
 }

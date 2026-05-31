@@ -111,6 +111,34 @@ public sealed class RecipeService : IRecipeService
             carbsGrams: request.CarbsGrams,
             fatGrams: request.FatGrams);
 
+        if (request.Tags is not null)
+        {
+            recipe.ClearTags();
+            foreach (var tag in request.Tags)
+                recipe.AddTag(tag);
+        }
+
+        if (request.Ingredients is not null)
+        {
+            recipe.ClearIngredients();
+            foreach (var ing in request.Ingredients)
+                recipe.AddIngredient(ing.Name, ing.Quantity, ing.Unit, ing.Notes);
+        }
+
+        if (request.Steps is not null)
+        {
+            recipe.ClearSteps();
+            foreach (var step in request.Steps)
+                recipe.AddStep(step.Body, step.Title);
+        }
+
+        if (request.Visibility == RecipeVisibility.Private)
+            recipe.MakePrivate();
+        else if (request.Visibility == RecipeVisibility.PendingReview)
+            recipe.SubmitForReview();
+        else if (request.Visibility == RecipeVisibility.Public && !isAdmin)
+            throw new ForbiddenException("Only admins can publish a recipe directly.");
+
         await _recipeRepository.UpdateAsync(recipe, ct);
 
         var displayName = await _userLookup.GetDisplayNameAsync(recipe.OwnerId, ct) ?? recipe.OwnerId;

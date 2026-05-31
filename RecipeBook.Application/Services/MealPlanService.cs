@@ -76,14 +76,15 @@ public sealed class MealPlanService : IMealPlanService
         if (plan.UserId != requestingUserId)
             throw new ForbiddenException("You do not have permission to modify this meal plan.");
 
-        plan.SetEntry(request.DayOfWeek, request.MealSlot, request.RecipeId, request.ServingCount);
+        var recipe = await _recipeRepository.GetByIdAsync(request.RecipeId, ct)
+            ?? throw new NotFoundException($"Recipe '{request.RecipeId}' not found.");
+
+        var servingCount = request.ServingCount ?? recipe.ServingSize;
+        plan.SetEntry(request.DayOfWeek, request.MealSlot, request.RecipeId, servingCount);
         await _mealPlanRepository.UpdateAsync(plan, ct);
 
         var entry = plan.Entries.First(e => e.DayOfWeek == request.DayOfWeek && e.MealSlot == request.MealSlot);
-        var recipe = await _recipeRepository.GetByIdAsync(entry.RecipeId, ct);
-        var recipeMap = recipe is not null
-            ? new Dictionary<Guid, Recipe> { [recipe.Id] = recipe }
-            : new Dictionary<Guid, Recipe>();
+        var recipeMap = new Dictionary<Guid, Recipe> { [recipe.Id] = recipe };
 
         return ToEntryDto(entry, recipeMap);
     }
@@ -131,16 +132,11 @@ public sealed class MealPlanService : IMealPlanService
 
     private async Task<IReadOnlyDictionary<Guid, Recipe>> LoadRecipeMapAsync(MealPlan plan, CancellationToken ct)
     {
-        var dict = new Dictionary<Guid, Recipe>();
-        foreach (var entry in plan.Entries)
-        {
-            if (!dict.ContainsKey(entry.RecipeId))
-            {
-                var recipe = await _recipeRepository.GetByIdAsync(entry.RecipeId, ct);
-                if (recipe is not null)
-                    dict[entry.RecipeId] = recipe;
-            }
-        }
-        return dict;
+        var uniqueIds = plan.Entries.Select(e => e.RecipeId).Distinct().ToList();
+        var recipes = await Task.WhenAll(uniqueIds.Select(id => _recipeRepository.GetByIdAsync(id, ct)));
+        return uniqueIds
+            .Zip(recipes)
+            .Where(pair => pair.Second is not null)
+            .ToDictionary(pair => pair.First, pair => pair.Second!);
     }
 }

@@ -227,6 +227,7 @@ public sealed class Recipe
         ArgumentException.ThrowIfNullOrWhiteSpace(title);
         ArgumentOutOfRangeException.ThrowIfLessThan(servingSize, 1);
         ThrowIfExceedsMaxLength(title, 200, nameof(title));
+        ThrowIfExceedsMaxLength(description, 2000, nameof(description));
 
         if (prepTimeMinutes is not null)
             ArgumentOutOfRangeException.ThrowIfLessThan(prepTimeMinutes.Value, 1, nameof(prepTimeMinutes));
@@ -255,6 +256,24 @@ public sealed class Recipe
         ProteinGrams = proteinGrams;
         CarbsGrams = carbsGrams;
         FatGrams = fatGrams;
+        TouchUpdatedAt();
+    }
+
+    public void ClearIngredients()
+    {
+        _ingredients.Clear();
+        TouchUpdatedAt();
+    }
+
+    public void ClearSteps()
+    {
+        _steps.Clear();
+        TouchUpdatedAt();
+    }
+
+    public void ClearTags()
+    {
+        _tags.Clear();
         TouchUpdatedAt();
     }
 

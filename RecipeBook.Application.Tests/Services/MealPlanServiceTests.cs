@@ -152,9 +152,7 @@ public class MealPlanServiceTests
     public async Task SetEntryAsync_WhenOwner_AddsEntryAndReturnsDto()
     {
         var plan = new MealPlan("user-1", NextMonday);
-        var recipeId = Guid.NewGuid();
         var recipe = new Recipe("Pasta", "user-1", 2, RecipeCategory.Dinner, visibility: RecipeVisibility.Public);
-        // We need to use the actual recipe id from the recipe object
         var request = new SetMealEntryRequest(DayOfWeek.Monday, MealSlot.Dinner, recipe.Id, 2);
 
         _mealPlanRepoMock.Setup(r => r.GetByIdAsync(plan.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
@@ -210,5 +208,38 @@ public class MealPlanServiceTests
         var act = () => _sut.ClearEntryAsync(plan.Id, new ClearMealEntryRequest(DayOfWeek.Monday, MealSlot.Dinner), requestingUserId: "other");
 
         await act.Should().ThrowAsync<ForbiddenException>();
+    }
+
+    // ── SetEntryAsync (additional behaviors) ─────────────────────────────────
+
+    [Fact]
+    public async Task SetEntryAsync_WhenRecipeNotFound_ThrowsNotFoundException()
+    {
+        var plan = new MealPlan("user-1", NextMonday);
+        _mealPlanRepoMock.Setup(r => r.GetByIdAsync(plan.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
+        _recipeRepoMock.Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync((Recipe?)null);
+
+        var request = new SetMealEntryRequest(DayOfWeek.Monday, MealSlot.Dinner, Guid.NewGuid(), ServingCount: 2);
+
+        var act = () => _sut.SetEntryAsync(plan.Id, request, requestingUserId: "user-1");
+
+        await act.Should().ThrowAsync<NotFoundException>();
+        _mealPlanRepoMock.Verify(r => r.UpdateAsync(It.IsAny<MealPlan>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SetEntryAsync_WhenServingCountNull_DefaultsToRecipeServingSize()
+    {
+        var plan = new MealPlan("user-1", NextMonday);
+        var recipe = new Recipe("Tacos", "owner-1", 4, RecipeCategory.Dinner, visibility: RecipeVisibility.Public);
+
+        _mealPlanRepoMock.Setup(r => r.GetByIdAsync(plan.Id, It.IsAny<CancellationToken>())).ReturnsAsync(plan);
+        _recipeRepoMock.Setup(r => r.GetByIdAsync(recipe.Id, It.IsAny<CancellationToken>())).ReturnsAsync(recipe);
+
+        var request = new SetMealEntryRequest(DayOfWeek.Wednesday, MealSlot.Dinner, recipe.Id, ServingCount: null);
+
+        var result = await _sut.SetEntryAsync(plan.Id, request, requestingUserId: "user-1");
+
+        result.ServingCount.Should().Be(4); // defaulted to recipe.ServingSize
     }
 }
