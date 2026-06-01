@@ -4,6 +4,7 @@
   <Project Path="RecipeBook.Infrastructure/RecipeBook.Infrastructure.csproj" />
   <Project Path="RecipeBook.Api/RecipeBook.Api.csproj" />
   <Project Path="RecipeBook.Blazor.Server/RecipeBook.Blazor.Server.csproj" />
+  <Project Path="RecipeBook.Tests.Shared/RecipeBook.Tests.Shared.csproj" />
   <Project Path="RecipeBook.Domain.Tests/RecipeBook.Domain.Tests.csproj" />
   <Project Path="RecipeBook.Application.Tests/RecipeBook.Application.Tests.csproj" />
   <Project Path="RecipeBook.Infrastructure.Tests/RecipeBook.Infrastructure.Tests.csproj" />

@@ -8,6 +8,10 @@ public sealed class Recipe
     private readonly List<RecipeStep> _steps = [];
     private readonly List<RecipeTag> _tags = [];
 
+#pragma warning disable CS8618 // EF Core parameterless constructor — properties are set by EF before use
+    private Recipe() { }
+#pragma warning restore CS8618
+
     public Recipe(
         string title,
         string ownerId,
@@ -79,7 +83,7 @@ public sealed class Recipe
     public decimal? ProteinGrams { get; private set; }
     public decimal? CarbsGrams { get; private set; }
     public decimal? FatGrams { get; private set; }
-    public DateTimeOffset CreatedAt { get; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public DateTimeOffset UpdatedAt { get; private set; }
 
     public string? RejectionReason { get; private set; }
