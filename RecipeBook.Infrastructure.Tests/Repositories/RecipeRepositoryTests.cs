@@ -332,4 +332,19 @@ public class RecipeRepositoryTests : IAsyncLifetime
 
         await act.Should().ThrowAsync<Npgsql.NpgsqlException>();
     }
+
+    [Fact]
+    public async Task GetPublicAsync_ReturnsRecipesWithTagsLoaded()
+    {
+        await SeedUserAsync("user-1");
+        var recipe = RecipeFactory.CreatePublic(ownerId: "user-1");
+        recipe.AddTag("chicken");
+        await _sut.AddAsync(recipe);
+
+        _context.ChangeTracker.Clear();
+        var result = await _sut.GetPublicAsync(new Application.Models.RecipeQuery());
+
+        result.Items.Should().ContainSingle();
+        result.Items[0].Tags.Should().ContainSingle(t => t.Name == "chicken");
+    }
 }

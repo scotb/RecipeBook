@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using RecipeBook.Domain.Entities;
+using RecipeBook.Infrastructure.Identity;
 
 namespace RecipeBook.Infrastructure.Persistence.Configurations;
 
@@ -27,6 +28,7 @@ internal sealed class MealPlanConfiguration : IEntityTypeConfiguration<MealPlan>
         builder.HasKey(p => p.Id);
         builder.Property(p => p.Id).ValueGeneratedNever();
         builder.Property(p => p.UserId).IsRequired();
+        builder.HasOne<ApplicationUser>().WithMany().HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Cascade);
         builder.Property(p => p.Name).HasMaxLength(100);
         builder.Navigation(p => p.Entries).HasField("_entries").UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.HasMany(p => p.Entries)

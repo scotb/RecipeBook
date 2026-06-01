@@ -108,6 +108,7 @@ public sealed class RecipeRepository : IRecipeRepository
     {
         var total = await q.CountAsync(ct);
         var items = await q
+            .Include(r => r.Tags)
             .OrderByDescending(r => r.UpdatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

@@ -165,4 +165,29 @@ public class MealPlanRepositoryTests : IAsyncLifetime
         var daysUntilMonday = ((int)DayOfWeek.Monday - (int)d.DayOfWeek + 7) % 7;
         return d.AddDays(daysUntilMonday == 0 ? 0 : daysUntilMonday);
     }
+
+    [Fact]
+    public async Task GetByUserAsync_ReturnsMealPlansWithEntriesLoaded()
+    {
+        await SeedUserAsync("user-1");
+        var recipeId = await SeedRecipeAsync("user-1");
+        var plan = MealPlanFactory.CreateWithEntry(recipeId, userId: "user-1");
+        await _sut.AddAsync(plan);
+
+        _context.ChangeTracker.Clear();
+        var result = await _sut.GetByUserAsync("user-1");
+
+        result.Should().ContainSingle();
+        result[0].Entries.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task AddAsync_WithNonExistentUserId_ThrowsDbUpdateException()
+    {
+        var plan = MealPlanFactory.CreateValid(userId: "nonexistent-user");
+
+        var act = async () => await _sut.AddAsync(plan);
+
+        await act.Should().ThrowAsync<Microsoft.EntityFrameworkCore.DbUpdateException>();
+    }
 }

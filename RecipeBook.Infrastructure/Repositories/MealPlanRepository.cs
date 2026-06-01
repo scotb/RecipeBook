@@ -25,6 +25,7 @@ public sealed class MealPlanRepository : IMealPlanRepository
     public async Task<IReadOnlyList<MealPlan>> GetByUserAsync(string userId, CancellationToken ct = default)
         => await _context.MealPlans
             .Where(p => p.UserId == userId)
+            .Include(p => p.Entries)
             .OrderByDescending(p => p.WeekStartDate)
             .ToListAsync(ct);
     public async Task UpdateAsync(MealPlan mealPlan, CancellationToken ct = default)
