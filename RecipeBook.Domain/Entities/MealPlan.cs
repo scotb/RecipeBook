@@ -6,6 +6,10 @@ public sealed class MealPlan
 {
     private readonly List<MealEntry> _entries = [];
 
+#pragma warning disable CS8618
+    private MealPlan() { }
+#pragma warning restore CS8618
+
     public MealPlan(string userId, DateOnly weekStartDate, string? name = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
@@ -25,9 +29,9 @@ public sealed class MealPlan
 
     public Guid Id { get; }
     public string UserId { get; }
-    public DateOnly WeekStartDate { get; }
+    public DateOnly WeekStartDate { get; private set; }
     public string? Name { get; private set; }
-    public DateTimeOffset CreatedAt { get; }
+    public DateTimeOffset CreatedAt { get; private set; }
     public IReadOnlyList<MealEntry> Entries => _entries.AsReadOnly();
 
     public void SetEntry(DayOfWeek day, MealSlot slot, Guid? recipeId, int? servingCount = null)

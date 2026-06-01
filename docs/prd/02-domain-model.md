@@ -100,6 +100,9 @@ public enum MealSlot
 - `Reject(string reason)` — transitions `PendingReview` → `Private`; throws if not pending; sets `RejectionReason`
 - `MakePrivate()` — transitions any visibility → `Private`; no-op if already `Private`
 - `Update(string title, int servingSize, RecipeCategory category, ...)` — mutates all scalar properties (title, servingSize, category, description, imageUrl, prepTimeMinutes, cookTimeMinutes, nutrition fields); applies same validation rules as the constructor; calls `TouchUpdatedAt()`
+- `ClearIngredients()` — removes all ingredients; no-op (and does not touch `UpdatedAt`) if already empty
+- `ClearSteps()` — removes all steps; no-op (and does not touch `UpdatedAt`) if already empty
+- `ClearTags()` — removes all tags; no-op (and does not touch `UpdatedAt`) if already empty
 - `Fork(string newOwnerId)` — returns a new `Recipe` with `SourceRecipeId` set, `Visibility = Private`, deep-copied child collections
 
 ---
@@ -211,6 +214,7 @@ Defined in `RecipeBook.Application.Interfaces`. Implemented in `RecipeBook.Infra
 ### `IRecipeRepository`
 ```csharp
 Task<Recipe?> GetByIdAsync(Guid id, CancellationToken ct = default);
+Task<IReadOnlyList<Recipe>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
 Task<PagedResult<Recipe>> GetPublicAsync(RecipeQuery query, CancellationToken ct = default);
 Task<PagedResult<Recipe>> GetByOwnerAsync(string ownerId, RecipeQuery query, CancellationToken ct = default);
 Task<PagedResult<Recipe>> GetAllAsync(AdminRecipeQuery query, CancellationToken ct = default);

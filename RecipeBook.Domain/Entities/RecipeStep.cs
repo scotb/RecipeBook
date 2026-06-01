@@ -2,6 +2,10 @@ namespace RecipeBook.Domain.Entities;
 
 public sealed class RecipeStep
 {
+#pragma warning disable CS8618
+    private RecipeStep() { }
+#pragma warning restore CS8618
+
     internal RecipeStep(Guid recipeId, string body, string? title, int sortOrder)
     {
         Id = Guid.NewGuid();

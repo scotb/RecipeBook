@@ -4,6 +4,10 @@ namespace RecipeBook.Domain.Entities;
 
 public sealed class MealEntry
 {
+#pragma warning disable CS8618
+    private MealEntry() { }
+#pragma warning restore CS8618
+
     internal MealEntry(Guid mealPlanId, DayOfWeek dayOfWeek, MealSlot mealSlot, Guid recipeId, int servingCount)
     {
         Id = Guid.NewGuid();
