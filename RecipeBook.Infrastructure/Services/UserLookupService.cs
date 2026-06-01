@@ -13,8 +13,11 @@ public sealed class UserLookupService : IUserLookupService
 
     public async Task<string?> GetDisplayNameAsync(string userId, CancellationToken ct = default)
     {
-        var user = await _userManager.FindByIdAsync(userId);
-        return user?.DisplayName;
+        var displayName = await _userManager.Users
+            .Where(u => u.Id == userId)
+            .Select(u => u.DisplayName)
+            .FirstOrDefaultAsync(ct);
+        return displayName;
     }
 
     public async Task<IReadOnlyDictionary<string, string>> GetDisplayNamesAsync(IEnumerable<string> userIds, CancellationToken ct = default)

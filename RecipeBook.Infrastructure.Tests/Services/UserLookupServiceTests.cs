@@ -109,4 +109,19 @@ public class UserLookupServiceTests : IAsyncLifetime
         result.ContainsKey("user-1").Should().BeTrue();
         result.ContainsKey("nonexistent").Should().BeFalse();
     }
+
+    [Fact]
+    public async Task GetDisplayNameAsync_WhenCancelled_ThrowsOperationCanceledException()
+    {
+        // Arrange
+        // Create a token that is already cancelled
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act & Assert
+        // This is expected to FAIL with the current implementation 
+        // because the token is ignored.
+        await Assert.ThrowsAsync<OperationCanceledException>(async () => 
+            await _sut.GetDisplayNameAsync("any-id", cts.Token));
+    }
 }

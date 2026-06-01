@@ -106,6 +106,9 @@ public sealed class RecipeRepository : IRecipeRepository
     private static async Task<PagedResult<Recipe>> ToPagedResultAsync(
         IQueryable<Recipe> q, int page, int pageSize, CancellationToken ct)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThan(page, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
+        
         var total = await q.CountAsync(ct);
         var items = await q
             .Include(r => r.Tags)

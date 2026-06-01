@@ -250,6 +250,38 @@ public class RecipeRepositoryTests : IAsyncLifetime
         page2.Items.Should().HaveCount(2);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task GetPublicAsync_WithInvalidPage_ThrowsArgumentException(int invalidPage)
+    {
+        // Arrange
+        var query = new Application.Models.RecipeQuery(Page: invalidPage, PageSize: 10);
+
+        // Act
+        var act = async () => await _sut.GetPublicAsync(query);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*page*");
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task GetPublicAsync_WithInvalidPageSize_ThrowsArgumentException(int invalidPageSize)
+    {
+        // Arrange
+        var query = new Application.Models.RecipeQuery(Page: 1, PageSize: invalidPageSize);
+
+        // Act
+        var act = async () => await _sut.GetPublicAsync(query);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*pageSize*");
+    }
+
     [Fact]
     public async Task GetByOwnerAsync_ReturnsAllRecipesForOwnerRegardlessOfVisibility()
     {
