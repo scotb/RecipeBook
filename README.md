@@ -60,7 +60,7 @@ Presentation  →  Infrastructure  →  Application  →  Domain
 | ORM | Entity Framework Core 10 (Code First, migrations) |
 | Database | PostgreSQL 17 (swappable via EF Core provider model) |
 | Blazor UI | Blazor Server (.NET 10) |
-| Testing | xUnit + FluentAssertions + Moq + bUnit + Testcontainers |
+| Testing | xUnit + FluentAssertions + Moq + bUnit |
 | CI/CD | GitHub Actions |
 | Hosting | Azure App Service + Azure Database for PostgreSQL |
 | Local Dev | Docker Compose |
@@ -86,6 +86,8 @@ Presentation  →  Infrastructure  →  Application  →  Domain
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) (`10.0.108` or later)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for PostgreSQL + full stack)
 - A Google and/or Facebook developer app (for OAuth — see setup below)
+
+> **Note:** Unit tests (Domain, Application, Infrastructure) run without Docker. Docker is only needed to run the full application stack.
 
 ### 1. Clone and configure secrets
 
@@ -121,30 +123,26 @@ dotnet ef database update --project RecipeBook.Infrastructure --startup-project 
 dotnet run --project RecipeBook.Api
 ```
 
-### OAuth Setup
-
-1. **Google**: Create a project at [console.cloud.google.com](https://console.cloud.google.com), enable Google+ API, create OAuth 2.0 credentials. Set redirect URI to `https://localhost:7100/api/v1/auth/callback`.
-2. **Facebook**: Create an app at [developers.facebook.com](https://developers.facebook.com), add Facebook Login product. Set redirect URI similarly.
-3. Add credentials to your `.env` file.
-
----
-
-## Running Tests
+### 4. Running Tests
 
 ```bash
-# All tests
+# All tests — no Docker needed
 dotnet test RecipeBook.slnx
 
-# Specific layer (Domain/Application tests need no Docker)
+# Specific layers
 dotnet test RecipeBook.Domain.Tests
 dotnet test RecipeBook.Application.Tests
-
-# Infrastructure tests (requires Docker for Testcontainers)
 dotnet test RecipeBook.Infrastructure.Tests
 
 # Blazor component tests
 dotnet test RecipeBook.Blazor.Server.Tests
 ```
+
+### OAuth Setup
+
+1. **Google**: Create a project at [console.cloud.google.com](https://console.cloud.google.com), enable Google+ API, create OAuth 2.0 credentials. Set redirect URI to `https://localhost:7100/api/v1/auth/callback`.
+2. **Facebook**: Create an app at [developers.facebook.com](https://developers.facebook.com), add Facebook Login product. Set redirect URI similarly.
+3. Add credentials to your `.env` file.
 
 ---
 

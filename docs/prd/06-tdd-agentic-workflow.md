@@ -122,7 +122,6 @@ The agent works autonomously through Steps 2–4.
 | `Moq` | Mock/stub creation for interfaces |
 | `bUnit` | Blazor component testing |
 | `Microsoft.AspNetCore.Mvc.Testing` | API integration tests via `WebApplicationFactory` |
-| `Testcontainers.PostgreSql` | Spins up a real PostgreSQL container for Infrastructure integration tests |
 
 ---
 
@@ -131,7 +130,7 @@ The agent works autonomously through Steps 2–4.
 ```
 RecipeBook.Domain.Tests/            # Unit tests for Domain entities and logic
 RecipeBook.Application.Tests/       # Unit tests for Application use-case handlers
-RecipeBook.Infrastructure.Tests/    # Integration tests (EF Core + real PostgreSQL via Testcontainers)
+RecipeBook.Infrastructure.Tests/    # Unit tests for Infrastructure (DI, EF Core model)
 RecipeBook.Api.Tests/               # Integration tests (WebApplicationFactory + in-memory or test DB)
 RecipeBook.Blazor.Server.Tests/     # Blazor component tests (bUnit)
 ```
@@ -265,42 +264,22 @@ public class ForkRecipeHandlerTests
 
 ### 7.3 Infrastructure Tests (`RecipeBook.Infrastructure.Tests`)
 
-Integration tests against a real PostgreSQL database spun up in a Docker container via Testcontainers.
+Unit tests for Infrastructure concerns that do not require a database:
+- Service registration correctness (DI container setup)
+- Entity property defaults (e.g. `CreatedAt` timestamps)
 
 **What to test:**
-- EF Core repository implementations produce correct SQL results
-- Unique constraints are enforced by the database
-- Pagination produces correct results
-- Complex queries (filter + sort + page) return correct data
+- DI container resolves all expected services
+- Entity property initializers set correct defaults
 
-**Setup pattern:**
-```csharp
-public class RecipeRepositoryTests : IAsyncLifetime
-{
-    private PostgreSqlContainer _postgres = new PostgreSqlBuilder().Build();
-    private RecipeBookDbContext _context = null!;
+**What NOT to test:**
+- Repository CRUD operations — these are thin EF Core wrappers. The business logic lives in the Application layer.
+- Database constraints — handled by the database itself, not your code
+- Query correctness — the Application layer's mocked repository tests exercise the same queries indirectly
 
-    public async Task InitializeAsync()
-    {
-        await _postgres.StartAsync();
-        // Apply migrations against the test container
-        var options = new DbContextOptionsBuilder<RecipeBookDbContext>()
-            .UseNpgsql(_postgres.GetConnectionString())
-            .Options;
-        _context = new RecipeBookDbContext(options);
-        await _context.Database.MigrateAsync();
-    }
+> **Note:** Repository implementations are thin EF Core wrappers (add, update, query, delete). Their logic is exercised indirectly through Application layer tests that mock the repository interface. Writing separate repository unit tests would test EF Core's behavior, not your code.
 
-    public async Task DisposeAsync() => await _postgres.DisposeAsync();
-
-    [Fact]
-    public async Task GetPublicAsync_WithCategoryFilter_ReturnsOnlyMatchingCategory()
-    {
-        // Arrange: seed dinner and breakfast recipes
-        // Act: query with Category = Dinner
-        // Assert: only dinner recipes returned
-    }
-}
+For full end-to-end verification, a separate integration test project (using `Microsoft.EntityFrameworkCore.InMemory` or a real database) can be added later to verify EF Core mapping and query correctness.
 ```
 
 ---
@@ -382,9 +361,8 @@ This project is referenced by all test projects.
 ## 9. Continuous Integration Test Execution
 
 Tests are run in CI (GitHub Actions) on every push:
-- Domain + Application tests: run directly (no containers needed)
-- Infrastructure tests: run with Docker-in-Docker (Testcontainers provides the PostgreSQL container)
-- API tests: run with an in-memory test database (or Testcontainers — configurable)
+- Domain + Application + Infrastructure tests: run directly (no containers needed)
+- API tests: run with an in-memory test database (or `WebApplicationFactory`)
 - Blazor component tests: run directly (no browser needed, bUnit is headless)
 
 **All tests must pass before a PR can be merged.**
