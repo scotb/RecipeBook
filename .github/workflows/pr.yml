@@ -17,23 +17,7 @@ jobs:
       checks: write
       pull-requests: write
 
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: recipebook_test
-          POSTGRES_USER: recipebook
-          POSTGRES_PASSWORD: test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     env:
-      TEST_DB_CONNECTION: "Host=localhost;Port=5432;Database=recipebook_test;Username=recipebook;Password=test"
       DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
 

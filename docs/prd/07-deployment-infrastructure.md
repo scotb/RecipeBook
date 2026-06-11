@@ -101,14 +101,7 @@ dotnet ef database update --project RecipeBook.Infrastructure --startup-project 
 # Run everything:
 docker compose up --build
 
-# Run tests only (no containers needed for Domain/Application tests):
-dotnet test RecipeBook.Domain.Tests
-dotnet test RecipeBook.Application.Tests
-
-# Infrastructure tests (requires Docker for Testcontainers):
-dotnet test RecipeBook.Infrastructure.Tests
-
-# All tests:
+# Run all tests (no containers needed):
 dotnet test RecipeBook.slnx
 ```
 
@@ -271,7 +264,7 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
-      - run: dotnet test RecipeBook.slnx   # Tests must pass before deploy
+      - run: dotnet test RecipeBook.slnx
 
       - name: Build and push API image
         run: |
