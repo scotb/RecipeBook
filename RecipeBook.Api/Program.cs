@@ -1,41 +1,39 @@
+using RecipeBook.Application;
+using RecipeBook.Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// Register strongly-typed JWT configuration.
+var jwtSection = builder.Configuration.GetSection("Jwt");
+builder.Services.Configure<RecipeBook.Infrastructure.Config.JwtConfig>(jwtSection);
+
+// Register auth services (TokenService + JWT Bearer) and chain Google/Facebook OAuth.
+builder.Services.AddAuthServices(builder.Configuration)
+    .AddGoogle(google =>
+    {
+        google.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
+        google.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+        google.CallbackPath = "/auth/google/callback";
+    })
+    .AddFacebook(facebook =>
+    {
+        facebook.AppId = builder.Configuration["Authentication:Facebook:AppId"] ?? "";
+        facebook.AppSecret = builder.Configuration["Authentication:Facebook:AppSecret"] ?? "";
+        facebook.CallbackPath = "/auth/facebook/callback";
+    });
+
+// Register application-layer services.
+builder.Services.AddApplicationServices();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
-
 var app = builder.Build();
-
-// Configure the HTTP request pipeline.
+// Configure the HTTP req pipeline.
 if (app.Environment.IsDevelopment())
-{
     app.MapOpenApi();
-}
-
 app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

@@ -6,6 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- NU1903 suppressed: SQLitePCLRaw.lib.e_sqlite3 2.1.11 bundles SQLite 3.49.1 (vuln fixed in 3.50.2+).
+         EF Core 10.x doesn't accept newer SQLitePCLRaw versions. Remove this line when:
+         - Upgrading to .NET 11+ / EF Core 11+, OR
+         - Microsoft releases an EF Core update that bundles patched SQLite -->
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
     <!-- Enable for zero-warning enforcement once scaffolding is cleaned up: -->
     <!-- <TreatWarningsAsErrors>true</TreatWarningsAsErrors> -->
   </PropertyGroup>
