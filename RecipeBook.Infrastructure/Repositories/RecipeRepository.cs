@@ -113,12 +113,13 @@ public sealed class RecipeRepository : IRecipeRepository
         ArgumentOutOfRangeException.ThrowIfLessThan(pageSize, 1);
         
         var total = await q.CountAsync(ct);
-        var items = await q
+        var items = q
             .Include(r => r.Tags)
+            .AsEnumerable()
             .OrderByDescending(r => r.UpdatedAt)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync(ct);
+            .ToList();
         return new PagedResult<Recipe>(items, total, page, pageSize);
     }
 }

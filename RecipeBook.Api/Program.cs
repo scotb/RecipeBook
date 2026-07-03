@@ -1,6 +1,7 @@
 using RecipeBook.Api;
 using RecipeBook.Api.Middleware;
 using RecipeBook.Application;
+using RecipeBook.Application.Interfaces;
 using RecipeBook.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,12 +25,22 @@ builder.Services.AddAuthServices(builder.Configuration)
         facebook.CallbackPath = "/auth/facebook/callback";
     });
 
+// Register HttpContextAccessor so middleware and services can read the current user.
+builder.Services.AddHttpContextAccessor();
+
+// Register IUserContext implementation (scoped per request).
+builder.Services.AddScoped<IUserContext, UserControllerContext>();
+
+// Register authorization services (required by UseAuthorization()).
+builder.Services.AddAuthorization();
+
 // Register application-layer services.
 builder.Services.AddApplicationServices();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 var app = builder.Build();
 // Configure the HTTP req pipeline.
