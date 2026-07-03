@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RecipeBook.Application.Interfaces;
@@ -9,13 +8,15 @@ namespace RecipeBook.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "Admin")]
 [Route("api/v1/admin")]
-public class AdminController : ControllerBase
+public class AdminController : BaseController
 {
     private readonly IRecipeService _recipeService;
+    private readonly IUserContext _userContext;
 
-    public AdminController(IRecipeService recipeService)
+    public AdminController(IRecipeService recipeService, IUserContext userContext)
     {
         _recipeService = recipeService;
+        _userContext = userContext;
     }
 
     [HttpGet("recipes")]
@@ -26,7 +27,8 @@ public class AdminController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var userId = RequireUserId();
+        if (string.IsNullOrEmpty(_userContext.UserId))
+            throw new InvalidOperationException("User identity claim is missing.");
 
         if (page < 1 || pageSize < 1 || pageSize > 100)
             return Problem(400, "Page and pageSize must be >= 1, pageSize must be <= 100.");
@@ -44,29 +46,11 @@ public class AdminController : ControllerBase
     [HttpDelete("recipes/{id:guid}")]
     public async Task<IActionResult> DeleteRecipe(Guid id, CancellationToken ct = default)
     {
-        var userId = RequireUserId();
+        if (string.IsNullOrEmpty(_userContext.UserId))
+            throw new InvalidOperationException("User identity claim is missing.");
 
-        await _recipeService.DeleteAsync(id, userId, isAdmin: true, ct);
+        await _recipeService.DeleteAsync(id, _userContext.UserId, ct);
         return NoContent();
     }
 
-    private string RequireUserId()
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            throw new InvalidOperationException("User identity claim is missing.");
-        return userId;
-    }
-
-    private IActionResult Problem(int statusCode, string detail)
-    {
-        return new ObjectResult(new ProblemDetails
-        {
-            Status = statusCode,
-            Detail = detail
-        })
-        {
-            StatusCode = statusCode
-        };
-    }
 }

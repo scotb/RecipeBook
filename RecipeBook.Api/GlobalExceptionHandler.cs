@@ -22,12 +22,17 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             _ => (500, "internal-error", "Internal Server Error")
         };
 
+        // SEC-004: Don't leak internal error details for 500 errors
+        string detail = status == 500
+            ? "An unexpected error occurred. Please try again later."
+            : ex.Message;
+
         var problem = new ProblemDetails
         {
             Type = type,
             Title = title,
             Status = status,
-            Detail = ex.Message
+            Detail = detail
         };
 
         ctx.Response.StatusCode = status;

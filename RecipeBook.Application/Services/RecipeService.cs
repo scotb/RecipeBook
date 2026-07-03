@@ -12,15 +12,18 @@ public sealed class RecipeService : IRecipeService
     private readonly IRecipeRepository _recipeRepository;
     private readonly IUserLookupService _userLookup;
     private readonly IRecipeImporter _recipeImporter;
+    private readonly IUserContext _userContext;
 
     public RecipeService(
         IRecipeRepository recipeRepository,
         IUserLookupService userLookup,
-        IRecipeImporter recipeImporter)
+        IRecipeImporter recipeImporter,
+        IUserContext userContext)
     {
         _recipeRepository = recipeRepository;
         _userLookup = userLookup;
         _recipeImporter = recipeImporter;
+        _userContext = userContext;
     }
 
     public async Task<PagedResult<RecipeSummaryDto>> GetPublicRecipesAsync(RecipeQuery query, CancellationToken ct = default)
@@ -41,14 +44,14 @@ public sealed class RecipeService : IRecipeService
         return await ToSummaryPageAsync(paged, ct);
     }
 
-    public async Task<RecipeDto> GetByIdAsync(Guid id, string requestingUserId, bool isAdmin = false, CancellationToken ct = default)
+    public async Task<RecipeDto> GetByIdAsync(Guid id, string requestingUserId, CancellationToken ct = default)
     {
         var recipe = await _recipeRepository.GetByIdAsync(id, ct)
             ?? throw new NotFoundException($"Recipe '{id}' not found.");
 
         if (recipe.Visibility != RecipeVisibility.Public
             && recipe.OwnerId != requestingUserId
-            && !isAdmin)
+            && !_userContext.IsInRole("Admin"))
             throw new ForbiddenException("You do not have access to this recipe.");
 
         var displayName = await _userLookup.GetDisplayNameAsync(recipe.OwnerId, ct) ?? recipe.OwnerId;
@@ -90,12 +93,12 @@ public sealed class RecipeService : IRecipeService
         return ToDto(recipe, displayName);
     }
 
-    public async Task<RecipeDto> UpdateAsync(Guid id, UpdateRecipeRequest request, string requestingUserId, bool isAdmin = false, CancellationToken ct = default)
+    public async Task<RecipeDto> UpdateAsync(Guid id, UpdateRecipeRequest request, string requestingUserId, CancellationToken ct = default)
     {
         var recipe = await _recipeRepository.GetByIdAsync(id, ct)
             ?? throw new NotFoundException($"Recipe '{id}' not found.");
 
-        if (recipe.OwnerId != requestingUserId && !isAdmin)
+        if (recipe.OwnerId != requestingUserId && !_userContext.IsInRole("Admin"))
             throw new ForbiddenException("You do not have permission to update this recipe.");
 
         recipe.Update(
@@ -138,7 +141,7 @@ public sealed class RecipeService : IRecipeService
                 recipe.MakePrivate();
             else if (request.Visibility == RecipeVisibility.PendingReview)
                 recipe.SubmitForReview();
-            else if (request.Visibility == RecipeVisibility.Public && isAdmin)
+            else if (request.Visibility == RecipeVisibility.Public && _userContext.IsInRole("Admin"))
                 recipe.Approve();
             else if (request.Visibility == RecipeVisibility.Public)
                 throw new ForbiddenException("Only admins can publish a recipe directly.");
@@ -150,12 +153,12 @@ public sealed class RecipeService : IRecipeService
         return ToDto(recipe, displayName);
     }
 
-    public async Task DeleteAsync(Guid id, string requestingUserId, bool isAdmin = false, CancellationToken ct = default)
+    public async Task DeleteAsync(Guid id, string requestingUserId, CancellationToken ct = default)
     {
         var recipe = await _recipeRepository.GetByIdAsync(id, ct)
             ?? throw new NotFoundException($"Recipe '{id}' not found.");
 
-        if (recipe.OwnerId != requestingUserId && !isAdmin)
+        if (recipe.OwnerId != requestingUserId && !_userContext.IsInRole("Admin"))
             throw new ForbiddenException("You do not have permission to delete this recipe.");
 
         await _recipeRepository.DeleteAsync(id, ct);
@@ -165,6 +168,9 @@ public sealed class RecipeService : IRecipeService
     {
         var source = await _recipeRepository.GetByIdAsync(sourceRecipeId, ct)
             ?? throw new NotFoundException($"Recipe '{sourceRecipeId}' not found.");
+
+        if (source.Visibility != RecipeVisibility.Public)
+            throw new ForbiddenException("You do not have permission to fork this recipe.");
 
         if (await _recipeRepository.HasForkAsync(sourceRecipeId, newOwnerId, ct))
             throw new ConflictException("You have already forked this recipe.");
@@ -179,6 +185,8 @@ public sealed class RecipeService : IRecipeService
     public async Task<ImportRecipeResult> ImportAsync(ImportRecipeRequest request, CancellationToken ct = default)
     {
         var recipe = await _recipeImporter.ImportFromUrlAsync(request.Url, ct);
+        if (recipe.Visibility == RecipeVisibility.Private)
+            throw new ForbiddenException("You do not have permission to import this recipe.");
         return new ImportRecipeResult(request.Url, recipe);
     }
 

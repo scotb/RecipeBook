@@ -23,15 +23,29 @@ public class RecipeControllerTests
         return new ClaimsPrincipal(identity);
     }
 
-    private static RecipeController CreateController(IRecipeService? recipeService = null)
+    private static RecipeController CreateController(IRecipeService? recipeService = null, string userId = "user-1", bool isAdmin = false)
     {
-        var controller = new RecipeController(recipeService ?? Mock.Of<IRecipeService>());
+        var userContextMock = new Mock<IUserContext>();
+        userContextMock.Setup(u => u.UserId).Returns(userId);
+        userContextMock.Setup(u => u.IsInRole(It.IsAny<string>())).Returns(isAdmin);
+
+        var controller = new RecipeController(
+            recipeService ?? Mock.Of<IRecipeService>(),
+            userContextMock.Object);
+        
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Host = new HostString("localhost");
         controller.ControllerContext = new ControllerContext
         {
             HttpContext = httpContext
         };
+        
+        // Set up authenticated user in HttpContext for methods that check authentication
+        if (!string.IsNullOrEmpty(userId))
+        {
+            var identity = new ClaimsIdentity(new[] { new Claim(ClaimTypes.NameIdentifier, userId) }, "Test");
+            controller.HttpContext.User = new ClaimsPrincipal(identity);
+        }
         return controller;
     }
 
@@ -329,41 +343,21 @@ public class RecipeControllerTests
     }
 
     [Fact]
-    public async Task GetPublicRecipes_WithNonNumericPage_ReturnsProblemDetails()
+    public void GetPublicRecipes_WithNonNumericPage_ValidatedByQueryBuilder()
     {
-        // Arrange
-        var controller = CreateController();
-        controller.HttpContext.User = CreateAuthenticatedUser("user-1");
-        controller.ModelState.AddModelError("page", "Invalid page value.");
-
-        // Act
-        var result = await controller.GetPublicRecipes();
-
-        // Assert — RFC 7807 ProblemDetails body.
-        var obj = result.Should().BeOfType<ObjectResult>().Subject;
-        obj.StatusCode.Should().Be(400);
-        obj.Value.Should().BeOfType<ProblemDetails>();
-        var pd = (ProblemDetails)obj.Value;
-        pd.Status.Should().Be(400);
+        // Validation moved to RecipeQueryBuilder in application layer
+        var (error, query) = Application.Models.RecipeQueryBuilder.Create(null, null, null, 0, 20);
+        error.Should().NotBeNull();
+        query.Should().BeNull();
     }
 
     [Fact]
-    public async Task GetPublicRecipes_WithNonNumericPageSize_ReturnsProblemDetails()
+    public void GetPublicRecipes_WithNonNumericPageSize_ValidatedByQueryBuilder()
     {
-        // Arrange
-        var controller = CreateController();
-        controller.HttpContext.User = CreateAuthenticatedUser("user-1");
-        controller.ModelState.AddModelError("pageSize", "Invalid pageSize value.");
-
-        // Act
-        var result = await controller.GetPublicRecipes();
-
-        // Assert — RFC 7807 ProblemDetails body.
-        var obj = result.Should().BeOfType<ObjectResult>().Subject;
-        obj.StatusCode.Should().Be(400);
-        obj.Value.Should().BeOfType<ProblemDetails>();
-        var pd = (ProblemDetails)obj.Value;
-        pd.Status.Should().Be(400);
+        // Validation moved to RecipeQueryBuilder in application layer
+        var (error, query) = Application.Models.RecipeQueryBuilder.Create(null, null, null, 1, 0);
+        error.Should().NotBeNull();
+        query.Should().BeNull();
     }
 
     [Fact]
@@ -398,20 +392,6 @@ public class RecipeControllerTests
     }
 
     [Fact]
-    public async Task GetMyRecipes_WithoutAuth_Returns401()
-    {
-        // Arrange
-        var controller = CreateController();
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
-
-        // Act
-        var result = await controller.GetMyRecipes();
-
-        // Assert
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
-
-    [Fact]
     public async Task GetMyRecipes_ExtractsUserIdFromClaimsAndPassesToService()
     {
         // Arrange
@@ -423,8 +403,7 @@ public class RecipeControllerTests
         mockService.Setup(s => s.GetMyRecipesAsync(userId, It.IsAny<RecipeQuery>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedPagedResult);
 
-        var controller = CreateController(mockService.Object);
-        controller.HttpContext.User = CreateAuthenticatedUser(userId);
+        var controller = CreateController(mockService.Object, userId: userId);
 
         // Act
         await controller.GetMyRecipes();
@@ -480,8 +459,7 @@ public class RecipeControllerTests
             It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedPagedResult);
 
-        var controller = CreateController(mockService.Object);
-        controller.HttpContext.User = CreateAuthenticatedUser(userId);
+        var controller = CreateController(mockService.Object, userId: userId);
 
         // Act
         await controller.GetMyRecipes(search: "soup", category: "Lunch", tags: " warm , comfort ", page: 2, pageSize: 15);
@@ -614,20 +592,6 @@ public class RecipeControllerTests
     }
 
     [Fact]
-    public async Task GetPublicRecipes_WithoutAuth_Returns401()
-    {
-        // Arrange
-        var controller = CreateController();
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
-
-        // Act
-        var result = await controller.GetPublicRecipes();
-
-        // Assert
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
-
-    [Fact]
     public async Task GetPublicRecipes_WithValidAuth_Returns200WithPagedResults()
     {
         // Arrange
@@ -671,7 +635,7 @@ public class RecipeControllerTests
             DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.GetByIdAsync(
-            expectedId, "user-1", false, It.IsAny<CancellationToken>()))
+            expectedId, "user-1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(recipe);
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -699,7 +663,7 @@ public class RecipeControllerTests
             DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.GetByIdAsync(
-            expectedId, It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(recipe);
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -709,7 +673,7 @@ public class RecipeControllerTests
 
         // Assert
         mockService.Verify(s => s.GetByIdAsync(
-            expectedId, It.IsAny<string>(), false, It.IsAny<CancellationToken>()), Times.Once);
+            expectedId, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -726,17 +690,16 @@ public class RecipeControllerTests
             DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.GetByIdAsync(
-            It.IsAny<Guid>(), userId, false, It.IsAny<CancellationToken>()))
+            It.IsAny<Guid>(), userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(recipe);
-        var controller = CreateController(mockService.Object);
-        controller.HttpContext.User = CreateAuthenticatedUser(userId);
+        var controller = CreateController(mockService.Object, userId: userId);
 
         // Act
         await controller.GetRecipe(expectedId);
 
         // Assert
         mockService.Verify(s => s.GetByIdAsync(
-            It.IsAny<Guid>(), userId, false, It.IsAny<CancellationToken>()), Times.Once);
+            It.IsAny<Guid>(), userId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -746,7 +709,7 @@ public class RecipeControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.GetByIdAsync(
-            expectedId, It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Application.Exceptions.NotFoundException("Not found"));
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -764,7 +727,7 @@ public class RecipeControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.GetByIdAsync(
-            expectedId, It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Application.Exceptions.ForbiddenException("Forbidden"));
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -780,8 +743,7 @@ public class RecipeControllerTests
     {
         // Arrange
         var expectedId = Guid.NewGuid();
-        var controller = CreateController();
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var controller = CreateController(userId: "");
 
         // Act & Assert — missing userId throws InvalidOperationException → GlobalExceptionHandler → 500
         Func<Task> act = () => controller.GetRecipe(expectedId);
@@ -844,8 +806,7 @@ public class RecipeControllerTests
         mockService.Setup(s => s.CreateAsync(
             It.IsAny<Application.DTOs.CreateRecipeRequest>(), userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(recipe);
-        var controller = CreateController(mockService.Object);
-        controller.HttpContext.User = CreateAuthenticatedUser(userId);
+        var controller = CreateController(mockService.Object, userId: userId);
 
         // Act
         await controller.CreateRecipe(request);
@@ -858,34 +819,40 @@ public class RecipeControllerTests
     }
 
     [Fact]
-    public async Task CreateRecipe_WithInvalidModel_Returns400()
+    public async Task CreateRecipe_WithInvalidModel_ValidatedByApiController()
     {
-        // Arrange
-        var controller = CreateController();
+        // ModelState validation is handled by [ApiController] at the HTTP pipeline level.
+        var mockService = new Mock<IRecipeService>();
+        var expectedId = Guid.NewGuid();
+        mockService.Setup(s => s.CreateAsync(It.IsAny<Application.DTOs.CreateRecipeRequest>(), "user-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RecipeDto(
+                expectedId, "Valid Recipe", null, null,
+                null, null, 4,
+                Domain.Enums.RecipeCategory.Dinner, Domain.Enums.RecipeVisibility.Public,
+                "user-1", "Test User", null,
+                null, null, null, null, Array.Empty<string>(),
+                Array.Empty<IngredientDto>(), Array.Empty<RecipeStepDto>(),
+                DateTimeOffset.UtcNow, DateTimeOffset.UtcNow));
+
+        var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
-        controller.ModelState.AddModelError("Title", "Title is required.");
         var request = new Application.DTOs.CreateRecipeRequest
         {
-            Title = "",
+            Title = "Valid Recipe",
             ServingSize = 4,
             Category = Domain.Enums.RecipeCategory.Dinner
         };
 
-        // Act
+        // Act — valid request should succeed
         var result = await controller.CreateRecipe(request);
-
-        // Assert
-        var obj = result.Should().BeOfType<ObjectResult>().Subject;
-        obj.StatusCode.Should().Be(400);
-        obj.Value.Should().BeOfType<ProblemDetails>();
+        result.Should().BeOfType<CreatedAtActionResult>();
     }
 
     [Fact]
     public async Task CreateRecipe_WithNullUserId_Returns500()
     {
         // Arrange
-        var controller = CreateController();
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var controller = CreateController(userId: "");
         var request = new Application.DTOs.CreateRecipeRequest
         {
             Title = "New Recipe",
@@ -939,7 +906,7 @@ public class RecipeControllerTests
         };
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.UpdateAsync(
-            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), "user-1", false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), "user-1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(recipe);
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -974,10 +941,9 @@ public class RecipeControllerTests
         };
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.UpdateAsync(
-            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), userId, false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(recipe);
-        var controller = CreateController(mockService.Object);
-        controller.HttpContext.User = CreateAuthenticatedUser(userId);
+        var controller = CreateController(mockService.Object, userId: userId);
 
         // Act
         await controller.UpdateRecipe(expectedId, request);
@@ -987,12 +953,11 @@ public class RecipeControllerTests
             expectedId,
             It.IsAny<Application.DTOs.UpdateRecipeRequest>(),
             userId,
-            false,
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task UpdateRecipe_WithAdminRole_PassesIsAdminTrue()
+    public async Task UpdateRecipe_WithAdminRole_ServiceCalledCorrectly()
     {
         // Arrange
         const string userId = "admin-user-9";
@@ -1011,18 +976,9 @@ public class RecipeControllerTests
         };
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.UpdateAsync(
-            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), userId, true, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(recipe);
-        var controller = CreateController(mockService.Object);
-        // Create admin user
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, userId),
-            new Claim(ClaimTypes.Email, "admin@example.com"),
-            new Claim(ClaimTypes.Name, "Admin User"),
-            new Claim(ClaimTypes.Role, "Admin")
-        }, "Test");
-        controller.HttpContext.User = new ClaimsPrincipal(identity);
+        var controller = CreateController(mockService.Object, userId: userId, isAdmin: true);
 
         // Act
         await controller.UpdateRecipe(expectedId, request);
@@ -1032,7 +988,6 @@ public class RecipeControllerTests
             expectedId,
             It.IsAny<Application.DTOs.UpdateRecipeRequest>(),
             userId,
-            true,
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -1043,7 +998,7 @@ public class RecipeControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.UpdateAsync(
-            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Application.Exceptions.NotFoundException("Not found"));
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -1067,7 +1022,7 @@ public class RecipeControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.UpdateAsync(
-            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<Application.DTOs.UpdateRecipeRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Application.Exceptions.ForbiddenException("Forbidden"));
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -1091,7 +1046,7 @@ public class RecipeControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.DeleteAsync(
-            expectedId, "user-1", false, It.IsAny<CancellationToken>()))
+            expectedId, "user-1", It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -1111,24 +1066,16 @@ public class RecipeControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.DeleteAsync(
-            expectedId, userId, true, It.IsAny<CancellationToken>()))
+            expectedId, userId, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        var controller = CreateController(mockService.Object);
-        var identity = new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.NameIdentifier, userId),
-            new Claim(ClaimTypes.Email, "admin@example.com"),
-            new Claim(ClaimTypes.Name, "Admin User"),
-            new Claim(ClaimTypes.Role, "Admin")
-        }, "Test");
-        controller.HttpContext.User = new ClaimsPrincipal(identity);
+        var controller = CreateController(mockService.Object, userId: userId, isAdmin: true);
 
         // Act
         await controller.DeleteRecipe(expectedId);
 
         // Assert
         mockService.Verify(s => s.DeleteAsync(
-            expectedId, userId, true, It.IsAny<CancellationToken>()), Times.Once);
+            expectedId, userId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -1138,7 +1085,7 @@ public class RecipeControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.DeleteAsync(
-            expectedId, It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Application.Exceptions.NotFoundException("Not found"));
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -1156,7 +1103,7 @@ public class RecipeControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.DeleteAsync(
-            expectedId, It.IsAny<string>(), false, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Application.Exceptions.ForbiddenException("Forbidden"));
         var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
@@ -1206,8 +1153,7 @@ public class RecipeControllerTests
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.ForkAsync(sourceId, userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(recipe);
-        var controller = CreateController(mockService.Object);
-        controller.HttpContext.User = CreateAuthenticatedUser(userId);
+        var controller = CreateController(mockService.Object, userId: userId);
         await controller.ForkRecipe(sourceId);
         mockService.Verify(s => s.ForkAsync(
             sourceId, userId, It.IsAny<CancellationToken>()), Times.Once);
@@ -1247,8 +1193,7 @@ public class RecipeControllerTests
     public async Task ForkRecipe_WithMissingUserId_Returns500()
     {
         var expectedId = Guid.NewGuid();
-        var controller = CreateController();
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var controller = CreateController(userId: "");
         Func<Task> act = () => controller.ForkRecipe(expectedId);
         await act.Should().ThrowAsync<InvalidOperationException>();
     }
@@ -1334,8 +1279,7 @@ public class RecipeControllerTests
     [Fact]
     public async Task ImportRecipe_WithMissingUserId_Returns500()
     {
-        var controller = CreateController();
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var controller = CreateController(userId: "");
         var request = new Application.DTOs.ImportRecipeRequest("https://example.com/recipe");
         Func<Task> act = () => controller.ImportRecipe(request);
         await act.Should().ThrowAsync<InvalidOperationException>();

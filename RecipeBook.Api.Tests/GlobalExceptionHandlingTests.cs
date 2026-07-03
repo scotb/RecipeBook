@@ -103,4 +103,17 @@ public class GlobalExceptionHandlerTests
         body.GetProperty("title").GetString().Should().Be("Internal Server Error");
         body.GetProperty("status").GetInt32().Should().Be(500);
     }
+
+    [Fact]
+    public async Task MapsUnknownException_ReturnsGenericDetail_NotExMessage()
+    {
+        // Act
+        var (status, _, body) = await InvokeHandlerAsync(new InvalidOperationException("Database connection failed at line 42"));
+
+        // Assert — SEC-004: 500 errors must not leak internal details
+        status.Should().Be(500);
+        var detail = body.GetProperty("detail").GetString();
+        detail.Should().NotBe("Database connection failed at line 42");
+        detail.Should().Contain("unexpected");
+    }
 }

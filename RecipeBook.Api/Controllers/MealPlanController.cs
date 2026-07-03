@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RecipeBook.Application.DTOs;
@@ -10,7 +9,7 @@ namespace RecipeBook.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/v1/mealplans")]
-public class MealPlanController : ControllerBase
+public class MealPlanController : BaseController
 {
     private readonly IMealPlanService _mealPlanService;
 
@@ -39,9 +38,6 @@ public class MealPlanController : ControllerBase
     public async Task<IActionResult> CreateMealPlan(
         CreateMealPlanRequest request, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return Problem(400, "Invalid request body.");
-
         var userId = GetUserId();
         var result = await _mealPlanService.CreateAsync(request, userId, ct);
         return CreatedAtAction(nameof(GetMealPlan), new { id = result.Id }, result);
@@ -51,9 +47,6 @@ public class MealPlanController : ControllerBase
     public async Task<IActionResult> UpdateMealPlan(
         Guid id, UpdateMealPlanRequest request, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return Problem(400, "Invalid request body.");
-
         var userId = GetUserId();
         var result = await _mealPlanService.UpdateAsync(id, request, userId, ct);
         return Ok(result);
@@ -71,9 +64,6 @@ public class MealPlanController : ControllerBase
     public async Task<IActionResult> SetMealPlanEntry(
         Guid id, SetMealEntryRequest request, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return Problem(400, "Invalid request body.");
-
         var userId = GetUserId();
         var result = await _mealPlanService.SetEntryAsync(id, request, userId, ct);
         return Ok(result);
@@ -83,31 +73,9 @@ public class MealPlanController : ControllerBase
     public async Task<IActionResult> ClearMealPlanEntry(
         Guid id, ClearMealEntryRequest request, CancellationToken ct = default)
     {
-        if (!ModelState.IsValid)
-            return Problem(400, "Invalid request body.");
-
         var userId = GetUserId();
         await _mealPlanService.ClearEntryAsync(id, request, userId, ct);
         return NoContent();
     }
 
-    private string GetUserId()
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrEmpty(userId))
-            throw new InvalidOperationException("User identity claim is missing.");
-        return userId;
-    }
-
-    private IActionResult Problem(int statusCode, string detail)
-    {
-        return new ObjectResult(new ProblemDetails
-        {
-            Status = statusCode,
-            Detail = detail
-        })
-        {
-            StatusCode = statusCode
-        };
-    }
 }

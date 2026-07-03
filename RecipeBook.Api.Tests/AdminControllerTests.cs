@@ -26,7 +26,13 @@ public class AdminControllerTests
 
     private static AdminController CreateController(IRecipeService? recipeService = null)
     {
-        var controller = new AdminController(recipeService ?? Mock.Of<IRecipeService>());
+        var userContextMock = new Mock<IUserContext>();
+        userContextMock.Setup(u => u.UserId).Returns("admin-1");
+        userContextMock.Setup(u => u.IsInRole(It.IsAny<string>())).Returns(true);
+
+        var controller = new AdminController(
+            recipeService ?? Mock.Of<IRecipeService>(),
+            userContextMock.Object);
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Host = new HostString("localhost");
         controller.ControllerContext = new ControllerContext
@@ -111,8 +117,12 @@ public class AdminControllerTests
     {
         // Arrange
         var mockService = new Mock<IRecipeService>();
-        var controller = CreateController(mockService.Object);
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var userContextMock = new Mock<IUserContext>();
+        userContextMock.Setup(u => u.UserId).Returns("");
+
+        var controller = new AdminController(
+            mockService.Object,
+            userContextMock.Object);
 
         // Act
         var act = async () => await controller.GetRecipes();
@@ -129,7 +139,7 @@ public class AdminControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.DeleteAsync(
-            expectedId, "admin-1", true, It.IsAny<CancellationToken>()))
+            expectedId, "admin-1", It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var controller = CreateController(mockService.Object);
@@ -143,13 +153,13 @@ public class AdminControllerTests
     }
 
     [Fact]
-    public async Task DeleteAdminRecipe_PassesIsAdminTrueToService()
+    public async Task DeleteAdminRecipe_PassesUserIdToService()
     {
         // Arrange
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.DeleteAsync(
-            It.IsAny<Guid>(), It.IsAny<string>(), true, It.IsAny<CancellationToken>()))
+            It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         var controller = CreateController(mockService.Object);
@@ -160,7 +170,7 @@ public class AdminControllerTests
 
         // Assert
         mockService.Verify(s => s.DeleteAsync(
-            expectedId, "admin-1", true, It.IsAny<CancellationToken>()), Times.Once);
+            expectedId, "admin-1", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -170,7 +180,7 @@ public class AdminControllerTests
         var expectedId = Guid.NewGuid();
         var mockService = new Mock<IRecipeService>();
         mockService.Setup(s => s.DeleteAsync(
-            expectedId, It.IsAny<string>(), true, It.IsAny<CancellationToken>()))
+            expectedId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new Application.Exceptions.NotFoundException("Not found"));
 
         var controller = CreateController(mockService.Object);
@@ -188,8 +198,12 @@ public class AdminControllerTests
     {
         // Arrange
         var mockService = new Mock<IRecipeService>();
-        var controller = CreateController(mockService.Object);
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
+        var userContextMock = new Mock<IUserContext>();
+        userContextMock.Setup(u => u.UserId).Returns("");
+
+        var controller = new AdminController(
+            mockService.Object,
+            userContextMock.Object);
 
         // Act
         var act = async () => await controller.DeleteRecipe(Guid.NewGuid());

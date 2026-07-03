@@ -15,11 +15,12 @@ public class RecipeServiceTests
     private readonly Mock<IRecipeRepository> _repoMock = new();
     private readonly Mock<IUserLookupService> _userLookupMock = new();
     private readonly Mock<IRecipeImporter> _importerMock = new();
+    private readonly Mock<IUserContext> _userContextMock = new();
     private readonly RecipeService _sut;
 
     public RecipeServiceTests()
     {
-        _sut = new RecipeService(_repoMock.Object, _userLookupMock.Object, _importerMock.Object);
+        _sut = new RecipeService(_repoMock.Object, _userLookupMock.Object, _importerMock.Object, _userContextMock.Object);
     }
 
     // ── CreateAsync ──────────────────────────────────────────────────────────
@@ -131,7 +132,8 @@ public class RecipeServiceTests
         _repoMock.Setup(r => r.GetByIdAsync(recipe.Id, It.IsAny<CancellationToken>())).ReturnsAsync(recipe);
         _userLookupMock.Setup(u => u.GetDisplayNameAsync("owner-1", It.IsAny<CancellationToken>())).ReturnsAsync("Owner");
 
-        var result = await _sut.GetByIdAsync(recipe.Id, requestingUserId: "admin-user", isAdmin: true);
+        _userContextMock.Setup(u => u.IsInRole("Admin")).Returns(true);
+        var result = await _sut.GetByIdAsync(recipe.Id, requestingUserId: "admin-user");
 
         result.Id.Should().Be(recipe.Id);
     }
@@ -178,7 +180,8 @@ public class RecipeServiceTests
 
         var request = new UpdateRecipeRequest { Title = "Admin Edit", ServingSize = 1, Category = RecipeCategory.Lunch };
 
-        var result = await _sut.UpdateAsync(recipe.Id, request, requestingUserId: "admin-user", isAdmin: true);
+        _userContextMock.Setup(u => u.IsInRole("Admin")).Returns(true);
+        var result = await _sut.UpdateAsync(recipe.Id, request, requestingUserId: "admin-user");
 
         result.Title.Should().Be("Admin Edit");
     }
@@ -214,12 +217,35 @@ public class RecipeServiceTests
         var recipe = new Recipe("Soup", "owner-1", 1, RecipeCategory.Lunch);
         _repoMock.Setup(r => r.GetByIdAsync(recipe.Id, It.IsAny<CancellationToken>())).ReturnsAsync(recipe);
 
-        await _sut.DeleteAsync(recipe.Id, requestingUserId: "admin-user", isAdmin: true);
+        _userContextMock.Setup(u => u.IsInRole("Admin")).Returns(true);
+        await _sut.DeleteAsync(recipe.Id, requestingUserId: "admin-user");
 
         _repoMock.Verify(r => r.DeleteAsync(recipe.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     // ── ForkAsync ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ForkAsync_WhenRecipeIsPrivate_ThrowsForbiddenException()
+    {
+        var src = new Recipe("Secret", "owner-1", 2, RecipeCategory.Dinner,
+            visibility: RecipeVisibility.Private);
+        _repoMock.Setup(r => r.GetByIdAsync(src.Id, It.IsAny<CancellationToken>())).ReturnsAsync(src);
+        var act = () => _sut.ForkAsync(src.Id, newOwnerId: "fork-user");
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _repoMock.Verify(r => r.AddAsync(It.IsAny<Recipe>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ForkAsync_WhenRecipeIsPendingReview_ThrowsForbiddenException()
+    {
+        var src = new Recipe("Draft", "owner-1", 2, RecipeCategory.Dinner,
+            visibility: RecipeVisibility.PendingReview);
+        _repoMock.Setup(r => r.GetByIdAsync(src.Id, It.IsAny<CancellationToken>())).ReturnsAsync(src);
+        var act = () => _sut.ForkAsync(src.Id, newOwnerId: "fork-user");
+        await act.Should().ThrowAsync<ForbiddenException>();
+        _repoMock.Verify(r => r.AddAsync(It.IsAny<Recipe>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
     [Fact]
     public async Task ForkAsync_WhenSourceExists_ReturnsFork()
@@ -325,6 +351,22 @@ public class RecipeServiceTests
     }
 
     // ── ImportAsync ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task ImportAsync_WhenImportedRecipeVisibilityIsPrivate_ThrowsForbiddenException()
+    {
+        var req = new ImportRecipeRequest("https://example.com/recipe");
+        var parsed = new CreateRecipeRequest
+        {
+            Title = "Private Recipe", ServingSize = 2, Category = RecipeCategory.Dinner,
+            Visibility = RecipeVisibility.Private
+        };
+        _importerMock
+            .Setup(i => i.ImportFromUrlAsync(req.Url, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(parsed);
+        var act = () => _sut.ImportAsync(req);
+        await act.Should().ThrowAsync<ForbiddenException>();
+    }
 
     [Fact]
     public async Task ImportAsync_WhenImporterSucceeds_ReturnsResult()
@@ -470,7 +512,8 @@ public class RecipeServiceTests
             Visibility = RecipeVisibility.Public
         };
 
-        var act = () => _sut.UpdateAsync(recipe.Id, request, requestingUserId: "user-1", isAdmin: false);
+        _userContextMock.Setup(u => u.IsInRole("Admin")).Returns(false);
+        var act = () => _sut.UpdateAsync(recipe.Id, request, requestingUserId: "user-1");
 
         await act.Should().ThrowAsync<ForbiddenException>();
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<Recipe>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -490,7 +533,8 @@ public class RecipeServiceTests
             Visibility = RecipeVisibility.Public
         };
 
-        await _sut.UpdateAsync(recipe.Id, request, requestingUserId: "admin-user", isAdmin: true);
+        _userContextMock.Setup(u => u.IsInRole("Admin")).Returns(true);
+        await _sut.UpdateAsync(recipe.Id, request, requestingUserId: "admin-user");
 
         recipe.Visibility.Should().Be(RecipeVisibility.Public);
     }

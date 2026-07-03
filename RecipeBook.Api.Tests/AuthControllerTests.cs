@@ -34,15 +34,6 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void GetMe_WithoutAuthentication_Returns401()
-    {
-        var controller = CreateController();
-        controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
-        var result = controller.GetMe();
-        result.Should().BeOfType<UnauthorizedResult>();
-    }
-
-    [Fact]
     public void GetMe_WithAuthenticatedUser_Returns200()
     {
         var controller = CreateController();

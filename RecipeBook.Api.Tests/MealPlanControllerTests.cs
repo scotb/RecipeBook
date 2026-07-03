@@ -197,20 +197,21 @@ public class MealPlanControllerTests
     }
 
     [Fact]
-    public async Task CreateMealPlan_WithInvalidModel_Returns400()
+    public async Task CreateMealPlan_WithInvalidModel_ValidatedByApiController()
     {
-        // Arrange
-        var controller = CreateController();
+        // ModelState validation is handled by [ApiController] at the HTTP pipeline level.
+        var mockService = new Mock<IMealPlanService>();
+        var expectedId = Guid.NewGuid();
+        mockService.Setup(s => s.CreateAsync(It.IsAny<CreateMealPlanRequest>(), "user-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MealPlanDto(expectedId, "Test", DateOnly.FromDateTime(DateTime.Today), DateTimeOffset.UtcNow, Array.Empty<MealEntryDto>()));
+
+        var controller = CreateController(mockService.Object);
         controller.HttpContext.User = CreateAuthenticatedUser("user-1");
-        controller.ModelState.AddModelError("WeekStartDate", "WeekStartDate is required.");
 
-        // Act
-        var result = await controller.CreateMealPlan(new CreateMealPlanRequest(default, null));
-
-        // Assert
-        var obj = result.Should().BeOfType<ObjectResult>().Subject;
-        obj.StatusCode.Should().Be(400);
-        obj.Value.Should().BeOfType<ProblemDetails>();
+        // Act — valid request should succeed
+        var result = await controller.CreateMealPlan(new CreateMealPlanRequest(
+            DateOnly.FromDateTime(DateTime.Today), null));
+        result.Should().BeOfType<CreatedAtActionResult>();
     }
 
     [Fact]

@@ -19,9 +19,6 @@ public class AuthController : ControllerBase
     [HttpGet("me")]
     public IActionResult GetMe()
     {
-        if (!User.Identity?.IsAuthenticated ?? true)
-            return Unauthorized();
-
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
         var email = User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
         var name = User.FindFirstValue(ClaimTypes.Name) ?? string.Empty;
