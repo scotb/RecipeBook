@@ -36,6 +36,7 @@
        ===================================================================== -->
   <ItemGroup>
     <PackageVersion Include="HtmlAgilityPack" Version="1.12.4" />
+    <PackageVersion Include="MudBlazor" Version="9.5.0" />
   </ItemGroup>
 
   <!-- =====================================================================
