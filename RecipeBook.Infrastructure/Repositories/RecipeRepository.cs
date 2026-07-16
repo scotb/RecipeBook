@@ -84,6 +84,9 @@ public sealed class RecipeRepository : IRecipeRepository
     public Task<bool> ExistsAsync(Guid id, CancellationToken ct = default) =>
         _context.Recipes.AnyAsync(r => r.Id == id, ct);
 
+    public Task<bool> HasForkAsync(Guid sourceRecipeId, string ownerId, CancellationToken ct = default) =>
+        _context.Recipes.AnyAsync(r => r.SourceRecipeId == sourceRecipeId && r.OwnerId == ownerId, ct);
+
     private static IQueryable<Recipe> ApplyQueryFilters(IQueryable<Recipe> q, RecipeQuery query)
     {
         if (query.Category.HasValue)

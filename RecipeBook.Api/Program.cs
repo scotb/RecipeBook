@@ -1,3 +1,5 @@
+using RecipeBook.Api;
+using RecipeBook.Api.Middleware;
 using RecipeBook.Application;
 using RecipeBook.Infrastructure;
 
@@ -27,12 +29,15 @@ builder.Services.AddApplicationServices();
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddOpenApi();
 var app = builder.Build();
 // Configure the HTTP req pipeline.
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 app.UseHttpsRedirection();
+app.UseExceptionHandler();
+app.UseMiddleware<UnauthorizedHandlerMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 

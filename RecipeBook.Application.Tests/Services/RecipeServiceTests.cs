@@ -251,6 +251,18 @@ public class RecipeServiceTests
         await act.Should().ThrowAsync<NotFoundException>();
     }
 
+    [Fact]
+    public async Task ForkAsync_WhenUserAlreadyForkedSourceRecipe_ThrowsConflictException()
+    {
+        var src = new Recipe("Original", "owner-1", 2, RecipeCategory.Dessert,
+            visibility: RecipeVisibility.Public);
+        _repoMock.Setup(r => r.GetByIdAsync(src.Id, It.IsAny<CancellationToken>())).ReturnsAsync(src);
+        _repoMock.Setup(r => r.HasForkAsync(src.Id, "fork-user", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        var act = () => _sut.ForkAsync(src.Id, newOwnerId: "fork-user");
+        await act.Should().ThrowAsync<ConflictException>();
+    }
+
     // ── GetPublicRecipesAsync / GetMyRecipesAsync ─────────────────────────────
 
     [Fact]

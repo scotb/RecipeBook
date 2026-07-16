@@ -166,6 +166,9 @@ public sealed class RecipeService : IRecipeService
         var source = await _recipeRepository.GetByIdAsync(sourceRecipeId, ct)
             ?? throw new NotFoundException($"Recipe '{sourceRecipeId}' not found.");
 
+        if (await _recipeRepository.HasForkAsync(sourceRecipeId, newOwnerId, ct))
+            throw new ConflictException("You have already forked this recipe.");
+
         var fork = source.Fork(newOwnerId);
         await _recipeRepository.AddAsync(fork, ct);
 

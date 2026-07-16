@@ -14,4 +14,5 @@ public interface IRecipeRepository
     Task UpdateAsync(Recipe recipe, CancellationToken ct = default);
     Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExistsAsync(Guid id, CancellationToken ct = default);
+    Task<bool> HasForkAsync(Guid sourceRecipeId, string ownerId, CancellationToken ct = default);
 }
