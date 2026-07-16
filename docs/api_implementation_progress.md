@@ -3,7 +3,7 @@
 **cur Focus:** Phase 2 — Recipe Management
 ## 🚀 cur Status
 **Phase:** 2 — Recipe Management
-**cur Task:** `Task 5.1: Fork & Import Endpoints` (DONE)
+**cur Task:** `Task 8.1: Admin Endpoints — Recipe Management` (DONE)
 ## ✅ Completed Tasks
 | ID | Task Name | desc | Status |
 | 1.1 | `ITokenService` Interface | Defined in `RecipeBook.app.Interfaces` | ✅ DONE |
@@ -14,6 +14,8 @@
 | 3.1 | `Recipe` Discovery | `GET /recipes`, `GET /recipes/my`, pagination, filtering | ✅ DONE |
 | 3.1.1 | ProblemDetails RFC 7807 Compliance | Global exception handler + 401 interceptor middleware | ✅ DONE |
 | 5.1 | Fork & Import Endpoints | `POST /recipes/{id}/fork`, `POST /recipes/import` + duplicate detection + ArgumentException mapping (280 tests) | ✅ DONE |
+| 6.1 | Meal Plan Controller — Full Lifecycle | `GET/POST /mealplans`, `GET/PUT/DELETE /mealplans/{id}`, `PUT/DELETE /mealplans/{id}/entries` (21 tests) | ✅ DONE |
+| 8.1 | Admin Endpoints — Recipe Management | `GET /admin/recipes`, `DELETE /admin/recipes/{id}` (8 tests) | ✅ DONE |
 ## 🚧 In Progress / Next Up
 | ID | Task Name | desc | Priority |
 | 4.1 | `Recipe` Lifecycle | `GET/{id}`, `POST`, `PUT`, `DELETE` | ✅ DONE |
@@ -27,10 +29,9 @@
 - [x] 4.1 Recipe Lifecycle (`GET/{id}`, `POST`, `PUT`, `DELETE`)
 - [x] 5.1 Advanced Actions (`Fork`, `Import`)
 ### Phase 3: Meal Plan Management
-- [ ] 6.1 Meal Plan Lifecycle (`GET`, `POST`, `PUT`, `DELETE`)
-- [ ] 7.1 Meal Plan Entries (`SetEntry`, `ClearEntry`)
+- [x] 6.1 Meal Plan Controller — Full Lifecycle (7 endpoints, 21 tests)
 ### Phase 4: Administrative & Integration
-- [ ] 8.1 Admin Endpoints (`GET /admin/recipes`, `DELETE /admin/recipes/{id}`)
+- [x] 8.1 Admin Endpoints (`GET /admin/recipes`, `DELETE /admin/recipes/{id}`, 8 tests)
 - [ ] 9.1 Full API Integration Test Suite (`WebApplicationFactory`)
 ## 🛠️ Technical ctx for Resuming
 - **Architecture:** Clean Architecture (Domain $\rightarrow$ app $\rightarrow$ Infrastructure $\rightarrow$ API).
