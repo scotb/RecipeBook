@@ -37,6 +37,19 @@ builder.Services.AddAuthorization();
 // Register application-layer services.
 builder.Services.AddApplicationServices();
 
+// Register infrastructure (DbContext, repositories, identity stores).
+// Fail fast in production when no connection string is configured.
+// Test environments override all registrations themselves and skip this block.
+var connectionString = builder.Configuration["ConnectionStrings:Default"];
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        throw new InvalidOperationException("Default connection string required.");
+    }
+    builder.Services.AddInfrastructure(builder.Configuration);
+}
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -52,5 +65,13 @@ app.UseMiddleware<UnauthorizedHandlerMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// Seed demo data in Development.
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<RecipeBook.Infrastructure.Persistence.RecipeBookDbContext>();
+    await RecipeBook.Api.Seeding.DbSeeder.SeedAsync(db);
+}
 
 app.Run();

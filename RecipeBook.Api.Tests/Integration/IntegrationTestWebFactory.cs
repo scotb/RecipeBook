@@ -26,6 +26,17 @@ public class IntegrationTestWebFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // Add connection string and provider via app configuration (loaded before
+        // default appsettings.json) so Program.cs can resolve them.
+        builder.ConfigureAppConfiguration((ctx, configBuilder) =>
+        {
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = "DataSource=:memory:",
+                ["Database:Provider"] = "SQLite",
+            });
+        });
+
         // Add in-memory config that overrides specific keys from appsettings.json.
         var testConfig = new Dictionary<string, string?>
         {

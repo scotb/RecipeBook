@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RecipeBook.Application.Interfaces;
 using RecipeBook.Infrastructure.Identity;
@@ -11,10 +12,36 @@ namespace RecipeBook.Infrastructure;
 
 public static class InfrastructureServiceExtensions
 {
+    /// <summary>
+    /// Overload for tests and simple scenarios — defaults to SQLite.
+    /// </summary>
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, string connectionString)
     {
-        services.AddDbContext<RecipeBookDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        var cfg = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = connectionString,
+                ["Database:Provider"] = "SQLite",
+            })!
+            .Build();
+        return services.AddInfrastructure(cfg);
+    }
+
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration cfg)
+    {
+        var connectionString = cfg.GetConnectionString("Default") ?? "";
+        var provider = cfg["Database:Provider"] ?? cfg["Database__Provider"] ?? "PostgreSQL";
+
+        if (provider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddDbContext<RecipeBookDbContext>(options =>
+                options.UseSqlite(connectionString));
+        }
+        else
+        {
+            services.AddDbContext<RecipeBookDbContext>(options =>
+                options.UseNpgsql(connectionString));
+        }
 
         services.AddIdentityCore<ApplicationUser>()
             .AddEntityFrameworkStores<RecipeBookDbContext>();
