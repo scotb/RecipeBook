@@ -51,5 +51,6 @@ app.UseExceptionHandler();
 app.UseMiddleware<UnauthorizedHandlerMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.MapControllers();
 
 app.Run();

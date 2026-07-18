@@ -2,6 +2,9 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <!-- AngleSharp 1.4.0 (transitive via bUnit) has a known moderate XSS advisory.
+         Suppressed: test-only project, transitive dep we cannot control. -->
+    <NoWarn>$(NoWarn);NU1902</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

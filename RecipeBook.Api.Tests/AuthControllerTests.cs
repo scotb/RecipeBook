@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Hosting;
 using Moq;
 using RecipeBook.Api.Controllers;
 using RecipeBook.Application.Interfaces;
@@ -21,9 +22,11 @@ public class AuthControllerTests
         return new ClaimsPrincipal(identity);
     }
 
-    private static AuthController CreateController(ITokenService? tokenService = null)
+    private static AuthController CreateController(ITokenService? tokenService = null, IWebHostEnvironment? env = null)
     {
-        var controller = new AuthController(tokenService ?? Mock.Of<ITokenService>());
+        var controller = new AuthController(
+            tokenService ?? Mock.Of<ITokenService>(),
+            env ?? Mock.Of<IWebHostEnvironment>());
         var httpContext = new DefaultHttpContext();
         httpContext.Request.Host = new HostString("localhost");
         controller.ControllerContext = new ControllerContext

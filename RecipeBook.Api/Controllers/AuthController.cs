@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using RecipeBook.Application.Interfaces;
 
 namespace RecipeBook.Api.Controllers;
@@ -9,10 +10,12 @@ namespace RecipeBook.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly ITokenService _tokenService;
+    private readonly IWebHostEnvironment _hostingEnvironment;
 
-    public AuthController(ITokenService tokenService)
+    public AuthController(ITokenService tokenService, IWebHostEnvironment hostingEnvironment)
     {
         _tokenService = tokenService;
+        _hostingEnvironment = hostingEnvironment;
     }
 
     [Authorize]
@@ -42,5 +45,17 @@ public class AuthController : ControllerBase
     public IActionResult Logout()
     {
         return Ok();
+    }
+
+    [HttpPost("demo")]
+    public IActionResult Demo()
+    {
+        if (!_hostingEnvironment.IsDevelopment())
+            return NotFound();
+
+        var token = _tokenService.GenerateToken(
+            "demo-user-001", "demo@localhost", "Demo User", null, new[] { "User", "Admin" });
+
+        return Ok(new { token });
     }
 }
