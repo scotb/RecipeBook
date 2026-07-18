@@ -1,7 +1,43 @@
 ﻿@page "/"
+@inject IDemoAuthService DemoAuth
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
+    <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudText Typo="Typo.h5">RecipeBook</MudText>
+        <MudText> A recipe management app. Sign in to get started.</MudText>
+    </MudAlert>
 
-Welcome to your new app.
+#if DEBUG
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="HandleDemoLogin"
+               Disabled="@isLoggingIn" Class="w-100">
+        @if (isLoggingIn)
+        {
+            <MudProgressCircular Indeterminate="true" Class="mr-2" />
+        }
+        Login as Demo User
+    </MudButton>
+#endif
+</MudContainer>
+
+@code {
+    private bool isLoggingIn;
+
+    private async Task HandleDemoLogin()
+    {
+        isLoggingIn = true;
+        try
+        {
+            var token = await DemoAuth.LoginAsDemoAsync();
+            await AuthState.SetUser(token);
+            Navigation.NavigateTo("/catalog");
+        }
+        finally
+        {
+            isLoggingIn = false;
+        }
+    }
+}

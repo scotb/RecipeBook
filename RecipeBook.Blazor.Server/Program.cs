@@ -29,6 +29,17 @@ builder.Services.AddMudServices();
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
     ?? throw new InvalidOperationException("ApiBaseUrl configuration key is required.");
 
+// ---------------------------------------------------------------------------
+// Demo Auth — unauthenticated client (no Bearer handler)
+// ---------------------------------------------------------------------------
+builder.Services.AddHttpClient<IDemoAuthService, DemoAuthService>("DemoAuth", client =>
+{
+    client.BaseAddress = new Uri(apiBaseUrl);
+});
+
+// ---------------------------------------------------------------------------
+// API Clients
+// ---------------------------------------------------------------------------
 builder.Services.AddHttpClient<IRecipeApiService, RecipeApiService>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
