@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IAuthStateService AuthState
 
 <div class="nav-menu">
     <MudNavLink Href="/catalog" Match="NavLinkMatch.All">
@@ -15,9 +16,9 @@
         <MudIcon Icon="@Icons.Material.Filled.CalendarMonth" /> Meal Plans
     </MudNavLink>
 
-    <AuthorizeView>
+    <AuthorizeView Context="authContext">
         <Authorized>
-            @if (isAdmin)
+            @if (authContext.User.IsInRole("Admin"))
             {
                 <MudNavLink Href="/admin/recipes">
                     <MudIcon Icon="@Icons.Material.Filled.AdminPanelSettings" /> Admin
@@ -25,8 +26,12 @@
             }
 
             <MudText Typo="Typo.body2" Class="nav-display-name">
-                @displayName
+                @(authContext.User.Identity?.Name ?? "User")
             </MudText>
+
+            <MudButton Variant="Variant.Text" Color="Color.Inherit" Size="Size.Small" OnClick="HandleSignOut">
+                <MudIcon Icon="@Icons.Material.Filled.Logout" /> Sign Out
+            </MudButton>
         </Authorized>
         <NotAuthorized>
             <MudNavLink Href="/login">
@@ -37,21 +42,9 @@
 </div>
 
 @code {
-    private bool isAdmin = false;
-    private string displayName = "";
-
-    protected override async Task OnParametersSetAsync()
+    private void HandleSignOut()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated == true)
-        {
-            displayName = user.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value
-                       ?? user.Identity.Name
-                       ?? "User";
-
-            isAdmin = user.IsInRole("Admin");
-        }
+        AuthState.ClearUser();
+        NavigationManager.NavigateTo("/");
     }
 }
