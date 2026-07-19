@@ -26,8 +26,16 @@ public class MealPlanApiService : ApiClientServiceBase, IMealPlanApiService
         return dtos!;
     }
 
-    public Task<MealPlanDto> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<MealPlanDto> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var response = await SendAsync(new HttpRequestMessage(HttpMethod.Get, $"/api/v1/mealplans/{id}"), ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApiException("Failed to fetch meal plan");
+        }
+        var dto = await response.Content.ReadFromJsonAsync<MealPlanDto>(ct);
+        return dto!;
+    }
 
     public async Task<MealPlanDto> CreateAsync(CreateMealPlanRequest request, CancellationToken ct = default)
     {
@@ -41,11 +49,26 @@ public class MealPlanApiService : ApiClientServiceBase, IMealPlanApiService
         throw new ApiException("Failed to create meal plan");
     }
 
-    public Task<MealPlanDto> UpdateAsync(Guid id, UpdateMealPlanRequest request, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<MealPlanDto> UpdateAsync(Guid id, UpdateMealPlanRequest request, CancellationToken ct = default)
+    {
+        var content = JsonContent.Create(request);
+        var response = await SendAsync(new HttpRequestMessage(HttpMethod.Put, $"/api/v1/mealplans/{id}") { Content = content }, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApiException("Failed to update meal plan");
+        }
+        var dto = await response.Content.ReadFromJsonAsync<MealPlanDto>(ct);
+        return dto!;
+    }
 
-    public Task DeleteAsync(Guid id, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var response = await SendAsync(new HttpRequestMessage(HttpMethod.Delete, $"/api/v1/mealplans/{id}"), ct);
+        if (response.StatusCode != HttpStatusCode.NoContent && response.StatusCode != HttpStatusCode.OK)
+        {
+            throw new ApiException("Failed to delete meal plan");
+        }
+    }
 
     public async Task<MealEntryDto> SetEntryAsync(Guid id, SetMealEntryRequest request, CancellationToken ct = default)
     {

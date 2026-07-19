@@ -39,6 +39,33 @@ public class RecipeApiServiceTests
     }
 
     [Fact]
+    public async Task GetByIdAsync_WhenApiReturns200_ReturnsRecipeDto()
+    {
+        // Arrange
+        var authStateServiceMock = new Mock<IAuthStateService>();
+        authStateServiceMock.Setup(s => s.GetJwt()).Returns("test-token");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        var recipeId = Guid.NewGuid();
+        var json = """{"id":"00000000-0000-0000-0000-000000000001","title":"Pasta","description":null,"imageUrl":null,"prepTimeMinutes":10,"cookTimeMinutes":20,"servingSize":4,"category":3,"visibility":1,"ownerId":"user-1","ownerDisplayName":"Test","sourceRecipeId":null,"caloriesPerServing":null,"proteinGrams":null,"carbsGrams":null,"fatGrams":null,"tags":[],"ingredients":[],"steps":[],"createdAt":"2025-01-01T00:00:00Z","updatedAt":"2025-01-01T00:00:00Z"}""";
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object) { BaseAddress = new Uri("https://localhost") };
+        var service = new TestRecipeApiService(httpClient, authStateServiceMock.Object);
+
+        // Act
+        var result = await service.GetByIdAsync(recipeId);
+
+        // Assert
+        result.Title.Should().Be("Pasta");
+    }
+
+    [Fact]
     public async Task CreateAsync_WhenApiReturns201_ReturnsRecipeDto()
     {
         // Arrange
@@ -68,6 +95,39 @@ public class RecipeApiServiceTests
 
         // Assert
         result.Title.Should().Be("Pasta");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenApiReturns200_ReturnsUpdatedRecipeDto()
+    {
+        // Arrange
+        var authStateServiceMock = new Mock<IAuthStateService>();
+        authStateServiceMock.Setup(s => s.GetJwt()).Returns("test-token");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        var recipeId = Guid.NewGuid();
+        var json = """{"id":"00000000-0000-0000-0000-000000000001","title":"Updated Pasta","description":null,"imageUrl":null,"prepTimeMinutes":15,"cookTimeMinutes":25,"servingSize":6,"category":3,"visibility":1,"ownerId":"user-1","ownerDisplayName":"Test","sourceRecipeId":null,"caloriesPerServing":null,"proteinGrams":null,"carbsGrams":null,"fatGrams":null,"tags":["updated"],"ingredients":[],"steps":[],"createdAt":"2025-01-01T00:00:00Z","updatedAt":"2025-01-02T00:00:00Z"}""";
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object) { BaseAddress = new Uri("https://localhost") };
+        var service = new TestRecipeApiService(httpClient, authStateServiceMock.Object);
+        var request = new UpdateRecipeRequest
+        {
+            Title = "Updated Pasta",
+            ServingSize = 6,
+            Category = Domain.Enums.RecipeCategory.Dinner
+        };
+
+        // Act
+        var result = await service.UpdateAsync(recipeId, request);
+
+        // Assert
+        result.Title.Should().Be("Updated Pasta");
     }
 
     [Fact]
@@ -138,6 +198,34 @@ public class RecipeApiServiceTests
 
         // Assert
         await act.Should().ThrowAsync<ApiException>().WithMessage("*Invalid URL*");
+    }
+
+    [Fact]
+    public async Task GetMyRecipesAsync_WhenApiReturns200_ReturnsPagedResult()
+    {
+        // Arrange
+        var authStateServiceMock = new Mock<IAuthStateService>();
+        authStateServiceMock.Setup(s => s.GetJwt()).Returns("test-token");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        var json = """{"items":[{"id":"00000000-0000-0000-0000-000000000001","title":"My Pasta","description":null,"imageUrl":null,"category":3,"visibility":2,"servingSize":4,"prepTimeMinutes":10,"cookTimeMinutes":20,"tags":["quick"],"ownerId":"user-1","ownerDisplayName":"Test","createdAt":"2025-01-01T00:00:00Z"}],"totalCount":1,"page":1,"pageSize":10}""";
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object) { BaseAddress = new Uri("https://localhost") };
+        var service = new TestRecipeApiService(httpClient, authStateServiceMock.Object);
+
+        // Act
+        var result = await service.GetMyRecipesAsync(search: null, category: null, tags: null, page: 1, pageSize: 10);
+
+        // Assert
+        result.TotalCount.Should().Be(1);
+        result.Items.Should().HaveCount(1);
+        result.Items[0].Title.Should().Be("My Pasta");
     }
 
     [Fact]

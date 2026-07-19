@@ -39,6 +39,32 @@ public class MealPlanApiServiceTests
     }
 
     [Fact]
+    public async Task GetByIdAsync_WhenApiReturns200_ReturnsMealPlanDto()
+    {
+        // Arrange
+        var authStateServiceMock = new Mock<IAuthStateService>();
+        authStateServiceMock.Setup(s => s.GetJwt()).Returns("test-token");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        var json = """{"id":"00000000-0000-0000-0000-000000000001","name":"Week 1","startDate":"2025-01-06","recipeCount":7,"entries":[],"createdAt":"2025-01-01T00:00:00Z","updatedAt":"2025-01-01T00:00:00Z"}""";
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object) { BaseAddress = new Uri("https://localhost") };
+        var service = new TestMealPlanApiService(httpClient, authStateServiceMock.Object);
+
+        // Act
+        var result = await service.GetByIdAsync(Guid.NewGuid());
+
+        // Assert
+        result.Name.Should().Be("Week 1");
+    }
+
+    [Fact]
     public async Task CreateAsync_WhenApiReturns201_ReturnsMealPlanDto()
     {
         // Arrange
@@ -63,6 +89,33 @@ public class MealPlanApiServiceTests
 
         // Assert
         result.Name.Should().Be("Week 1");
+    }
+
+    [Fact]
+    public async Task UpdateAsync_WhenApiReturns200_ReturnsUpdatedMealPlanDto()
+    {
+        // Arrange
+        var authStateServiceMock = new Mock<IAuthStateService>();
+        authStateServiceMock.Setup(s => s.GetJwt()).Returns("test-token");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        var json = """{"id":"00000000-0000-0000-0000-000000000001","name":"Updated Week 1","startDate":"2025-01-06","recipeCount":7,"entries":[],"createdAt":"2025-01-01T00:00:00Z","updatedAt":"2025-01-03T00:00:00Z"}""";
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json")
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object) { BaseAddress = new Uri("https://localhost") };
+        var service = new TestMealPlanApiService(httpClient, authStateServiceMock.Object);
+        var request = new UpdateMealPlanRequest("Updated Week 1");
+
+        // Act
+        var result = await service.UpdateAsync(Guid.NewGuid(), request);
+
+        // Assert
+        result.Name.Should().Be("Updated Week 1");
     }
 
     [Fact]
@@ -113,6 +166,26 @@ public class MealPlanApiServiceTests
         // Act + Assert
         var act = async () => await service.GetAllAsync();
         await act.Should().ThrowAsync<ApiException>();
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WhenApiReturns204_DoesNotThrow()
+    {
+        // Arrange
+        var authStateServiceMock = new Mock<IAuthStateService>();
+        authStateServiceMock.Setup(s => s.GetJwt()).Returns("test-token");
+
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync", ItExpr.IsAny<HttpRequestMessage>(), ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.NoContent));
+
+        var httpClient = new HttpClient(handlerMock.Object) { BaseAddress = new Uri("https://localhost") };
+        var service = new TestMealPlanApiService(httpClient, authStateServiceMock.Object);
+
+        // Act + Assert
+        var act = async () => await service.DeleteAsync(Guid.NewGuid());
+        await act.Should().NotThrowAsync();
     }
 
     [Fact]

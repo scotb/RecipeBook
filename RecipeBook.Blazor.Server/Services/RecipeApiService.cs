@@ -31,11 +31,33 @@ public class RecipeApiService : ApiClientServiceBase, IRecipeApiService
         return new PagedResult<RecipeSummaryDto>(dto!.Items!, dto.TotalCount, dto.Page, dto.PageSize);
     }
 
-    public Task<PagedResult<RecipeSummaryDto>> GetMyRecipesAsync(string? search, string? category, string? tags, int page, int pageSize, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<PagedResult<RecipeSummaryDto>> GetMyRecipesAsync(
+        string? search, string? category, string? tags, int page, int pageSize, CancellationToken ct = default)
+    {
+        var query = new List<string> { $"page={page}", $"pageSize={pageSize}" };
+        if (!string.IsNullOrWhiteSpace(search)) query.Add($"search={Uri.EscapeDataString(search)}");
+        if (!string.IsNullOrWhiteSpace(category)) query.Add($"category={Uri.EscapeDataString(category)}");
+        if (!string.IsNullOrWhiteSpace(tags)) query.Add($"tags={Uri.EscapeDataString(tags)}");
 
-    public Task<RecipeDto> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => throw new NotImplementedException();
+        var response = await SendAsync(new HttpRequestMessage(HttpMethod.Get, $"/api/v1/recipes/my?{string.Join("&", query)}"), ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApiException("Failed to fetch my recipes");
+        }
+        var dto = await response.Content.ReadFromJsonAsync<PagedResultDto<RecipeSummaryDto>>(ct);
+        return new PagedResult<RecipeSummaryDto>(dto!.Items!, dto.TotalCount, dto.Page, dto.PageSize);
+    }
+
+    public async Task<RecipeDto> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var response = await SendAsync(new HttpRequestMessage(HttpMethod.Get, $"/api/v1/recipes/{id}"), ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApiException("Failed to fetch recipe");
+        }
+        var dto = await response.Content.ReadFromJsonAsync<RecipeDto>(ct);
+        return dto!;
+    }
 
     public async Task<RecipeDto> CreateAsync(CreateRecipeRequest request, CancellationToken ct = default)
     {
@@ -49,8 +71,17 @@ public class RecipeApiService : ApiClientServiceBase, IRecipeApiService
         throw new ApiException("Failed to create recipe");
     }
 
-    public Task<RecipeDto> UpdateAsync(Guid id, UpdateRecipeRequest request, CancellationToken ct = default)
-        => throw new NotImplementedException();
+    public async Task<RecipeDto> UpdateAsync(Guid id, UpdateRecipeRequest request, CancellationToken ct = default)
+    {
+        var content = JsonContent.Create(request);
+        var response = await SendAsync(new HttpRequestMessage(HttpMethod.Put, $"/api/v1/recipes/{id}") { Content = content }, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApiException("Failed to update recipe");
+        }
+        var dto = await response.Content.ReadFromJsonAsync<RecipeDto>(ct);
+        return dto!;
+    }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
