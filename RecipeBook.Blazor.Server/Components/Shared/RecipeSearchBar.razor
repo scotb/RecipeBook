@@ -1,0 +1,17 @@
+@using Microsoft.AspNetCore.Components.Web
+
+<MudTextField @bind-Value="SearchText" Label="Search recipes..." Variant="Variant.Outlined" Class="mb-2"
+              OnKeyDown="HandleKeyDown" Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search" />
+
+@code {
+    [Parameter] public string SearchText { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && !string.IsNullOrWhiteSpace(SearchText))
+        {
+            await OnSearch.InvokeAsync(SearchText);
+        }
+    }
+}

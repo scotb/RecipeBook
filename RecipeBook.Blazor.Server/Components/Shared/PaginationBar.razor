@@ -1,0 +1,26 @@
+@using MudBlazor Icons
+
+@if (TotalPages > 1)
+{
+    <nav aria-label="Pagination">
+        <MudIconButton Icon="@Icons.Material.Filled.FirstPage" Disabled="@(CurrentPage <= 1)"
+                       click="@(() => OnPageChanged.InvokeAsync(1))" />
+        <MudIconButton Icon="@Icons.Material.Filled.NavigateBefore" Disabled="@(CurrentPage <= 1)"
+                       click="@(() => OnPageChanged.InvokeAsync(CurrentPage - 1))" />
+
+        <span class="mx-2">
+            Page @CurrentPage of @TotalPages
+        </span>
+
+        <MudIconButton Icon="@Icons.Material.Filled.NavigateNext" Disabled="@(CurrentPage >= TotalPages)"
+                       click="@(() => OnPageChanged.InvokeAsync(CurrentPage + 1))" />
+        <MudIconButton Icon="@Icons.Material.Filled.LastPage" Disabled="@(CurrentPage >= TotalPages)"
+                       click="@(() => OnPageChanged.InvokeAsync(TotalPages))" />
+    </nav>
+}
+
+@code {
+    [Parameter] public int CurrentPage { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+}

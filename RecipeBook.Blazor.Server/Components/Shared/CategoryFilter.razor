@@ -1,0 +1,38 @@
+@using RecipeBook.Domain.Enums
+
+<div class="category-filter mb-4">
+    @if (Categories != null && Categories.Length > 0)
+    {
+        <MudChip T="string" Class="mr-2 mb-1" color="@GetAllColor()" click="@(() => HandleAllClick())">
+            All
+        </MudChip>
+
+        @foreach (var category in Categories)
+        {
+            <MudChip T="string" Class="mr-2 mb-1"
+                     color="@(SelectedCategory == category ? Color.Primary : Color.Default)"
+                     outlined="@(SelectedCategory == category)"
+                     click="@(() => HandleCategoryClick(category))">
+                @category
+            </MudChip>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public RecipeCategory[]? Categories { get; set; }
+    [Parameter] public RecipeCategory? SelectedCategory { get; set; }
+    [Parameter] public EventCallback<RecipeCategory?> OnCategorySelected { get; set; }
+
+    private Color GetAllColor() => SelectedCategory == null ? Color.Primary : Color.Default;
+
+    private async Task HandleAllClick()
+    {
+        await OnCategorySelected.InvokeAsync(null);
+    }
+
+    private async Task HandleCategoryClick(RecipeCategory category)
+    {
+        await OnCategorySelected.InvokeAsync(category);
+    }
+}

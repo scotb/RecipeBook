@@ -1,0 +1,118 @@
+@using RecipeBook.Application.DTOs
+@using RecipeBook.Domain.Enums
+@using RecipeBook.Blazor.Server.Components.Shared
+@page "/catalog"
+@inject IRecipeApiService Recipes
+@inject NavigationManager Navigation
+
+<PageTitle>Catalog — RecipeBook</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4 mb-4" />
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @_errorMessage
+            <MudButton Color="Color.Primary" OnClick="Retry" Class="ml-2">Retry</MudButton>
+        </MudAlert>
+    }
+    else
+    {
+        <RecipeSearchBar @ref="_searchBar" OnSearch="HandleSearch" />
+        <CategoryFilter Categories="@_allCategories" SelectedCategory="@_selectedCategory" OnCategorySelected="HandleCategorySelected" />
+
+        @if (_recipes != null && _recipes.TotalCount > 0)
+        {
+            @foreach (var recipe in _recipes.Items)
+            {
+                <RecipeCard Recipe="@recipe" OnClick="HandleRecipeClick" />
+            }
+            <div class="d-flex justify-center mt-4">
+                <PaginationBar CurrentPage="@_currentPage" TotalPages="@_totalPages" OnPageChanged="HandlePageChanged" />
+            </div>
+        }
+        else if (_recipes != null)
+        {
+            <MudText Class="text-center mt-4">No recipes found</MudText>
+        }
+    }
+</MudContainer>
+
+@code {
+    private PagedResult<RecipeSummaryDto>? _recipes;
+    private bool _loading = true;
+    private string? _errorMessage;
+    private string? _searchText;
+    private int _currentPage = 1;
+    private int _totalPages = 1;
+    private RecipeCategory? _selectedCategory;
+    private readonly RecipeCategory[] _allCategories = Enum.GetValues<RecipeCategory>();
+    private RecipeSearchBar? _searchBar;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            await LoadRecipesAsync();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load recipes: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Retry()
+    {
+        _errorMessage = null;
+        _ = LoadRecipesAsync();
+    }
+
+    private async Task LoadRecipesAsync(string? searchText = null, string? category = null, string? sortBy = null, int page = 1)
+    {
+        _recipes = await Recipes.GetPublicRecipesAsync(searchText, category, sortBy, page, 12);
+        if (_recipes != null)
+        {
+            _totalPages = (int)Math.Ceiling(_recipes.TotalCount / (double)12);
+            _currentPage = page;
+        }
+    }
+
+    public async Task RefreshWithFilters(string? searchText, string? category, string? sortBy, int page = 1)
+    {
+        await LoadRecipesAsync(searchText, category, sortBy, page);
+    }
+
+    private void HandleSearch(string text)
+    {
+        _searchText = text;
+        _ = LoadRecipesAsync(searchText: _searchText, category: _selectedCategory?.ToString(), page: _currentPage);
+    }
+
+    private void HandleCategorySelected(RecipeCategory? category)
+    {
+        _selectedCategory = category;
+        _ = LoadRecipesAsync(searchText: _searchText, category: _selectedCategory?.ToString(), page: _currentPage);
+    }
+
+    private void HandlePageChanged(int page)
+    {
+        _ = LoadRecipesAsync(searchText: _searchText, category: _selectedCategory?.ToString(), page: page);
+    }
+
+    private void HandleRecipeClick(RecipeSummaryDto recipe)
+    {
+        Navigation.NavigateTo($"/recipes/{recipe.Id}");
+    }
+}
