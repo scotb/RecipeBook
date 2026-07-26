@@ -43,7 +43,7 @@ This is a **master map** of remaining work. Each "Unit" below is a self-containe
 | Infrastructure (EF Core, repos) | ✅ Complete | 24 pass | SQLite + PostgreSQL |
 | API (controllers, auth) | ✅ Complete | 137 pass | Wired up, seed data added |
 | Blazor (API clients) | ✅ Complete | 26 pass | All methods implemented |
-| Blazor (UI pages) | 🔄 In progress | — | Catalog page built |
+| Blazor (UI pages) | 🔄 In progress | — | Catalog + Recipe Detail built |
 | Blazor (shared components) | ✅ Complete | — | RecipeCard, Search, Category, Pagination |
 
 **Total:** 379+ tests, 0 failures. Build succeeds.
@@ -376,6 +376,9 @@ if (app.Environment.IsDevelopment())
 **PRD reference:** PRD 05 §3.6  
 **Estimated effort:** 2-3 hours
 
+**Prerequisite fix (do this first):**
+In `RecipeDetail.razor`, fix the serving count initialization bug described above (move `_servingCount` assignment into `OnParametersSetAsync`, remove sync `OnParametersSet`).
+
 **Behaviors to test:**
 1. Create mode — all fields blank by default
 2. Edit mode — fields pre-populated from API
@@ -447,16 +450,12 @@ if (app.Environment.IsDevelopment())
 
 ## Stub Methods Reference
 
-These API client methods need implementation (see Unit 4a):
+All API client stubs have been implemented (see Units 4a and 4c). Remaining methods added in 4c:
 
-| Service | Method | API Endpoint | Pattern |
+| Service | Method | API Endpoint | Added in |
 |---|---|---|---|
-| `RecipeApiService` | `GetMyRecipesAsync` | `GET /api/v1/recipes/my` | Like `GetPublicRecipesAsync` but different endpoint |
-| `RecipeApiService` | `GetByIdAsync` | `GET /api/v1/recipes/{id}` | Simple GET, deserialize `RecipeDto` |
-| `RecipeApiService` | `UpdateAsync` | `PUT /api/v1/recipes/{id}` | Like `CreateAsync` but PUT, no 201 check |
-| `MealPlanApiService` | `GetByIdAsync` | `GET /api/v1/mealplans/{id}` | Simple GET, deserialize `MealPlanDto` |
-| `MealPlanApiService` | `UpdateAsync` | `PUT /api/v1/mealplans/{id}` | Like `CreateAsync` but PUT |
-| `MealPlanApiService` | `DeleteAsync` | `DELETE /api/v1/mealplans/{id}` | DELETE, expect 204 |
+| `RecipeApiService` | `DeleteAsync` | `DELETE /api/v1/recipes/{id}` | Unit 4c |
+| `RecipeApiService` | `ForkAsync` | `POST /api/v1/recipes/{id}/fork` | Unit 4c |
 
 ---
 
@@ -465,34 +464,35 @@ These API client methods need implementation (see Unit 4a):
 ### API
 | File | Action |
 |---|---|
-| `RecipeBook.Api/Program.cs` | **Must edit** — add infrastructure + seed data |
-| `RecipeBook.Api/Controllers/AuthController.cs` | **Must edit** — add `Demo()` endpoint |
-| `RecipeBook.Api/appsettings.Development.json` | **Must edit** — add connection string + provider |
+| `RecipeBook.Api/Program.cs` | ✅ Infrastructure + seed data added |
+| `RecipeBook.Api/Controllers/AuthController.cs` | ✅ `Demo()` endpoint added |
+| `RecipeBook.Api/appsettings.Development.json` | ✅ Connection string + provider added |
 
 ### Infrastructure
 | File | Action |
 |---|---|
-| `RecipeBook.Infrastructure/InfrastructureServiceExtensions.cs` | **Must edit** — conditional SQLite/PostgreSQL |
+| `RecipeBook.Infrastructure/InfrastructureServiceExtensions.cs` | ✅ Conditional SQLite/PostgreSQL |
 
 ### Blazor
 | File | Action |
 |---|---|
-| `RecipeBook.Blazor.Server/appsettings.json` | **Must edit** — fix API URL |
-| `RecipeBook.Blazor.Server/Components/Pages/Home.razor` | **Must edit** — add demo login button |
-| `RecipeBook.Blazor.Server/Components/Layout/NavMenu.razor` | **Must edit** — real routes |
-| `RecipeBook.Blazor.Server/Services/RecipeApiService.cs` | **Must edit** — 3 stubs |
-| `RecipeBook.Blazor.Server/Services/MealPlanApiService.cs` | **Must edit** — 3 stubs |
-| `RecipeBook.Blazor.Server/Components/Pages/Catalog.razor` | **Create** — new page |
-| `RecipeBook.Blazor.Server/Components/Pages/RecipeDetail.razor` | **Create** — new page |
+| `RecipeBook.Blazor.Server/appsettings.json` | ✅ API URL fixed |
+| `RecipeBook.Blazor.Server/Components/Pages/Home.razor` | ✅ Demo login button added |
+| `RecipeBook.Blazor.Server/Components/Layout/NavMenu.razor` | ✅ Real routes + sign-out added |
+| `RecipeBook.Blazor.Server/Services/RecipeApiService.cs` | ✅ All stubs + Fork/Delete |
+| `RecipeBook.Blazor.Server/Services/MealPlanApiService.cs` | ✅ All stubs |
+| `RecipeBook.Blazor.Server/Services/IAuthStateService.cs` | ✅ `GetUserId()` added |
+| `RecipeBook.Blazor.Server/Components/Pages/Catalog.razor` | ✅ Built — Unit 4b |
+| `RecipeBook.Blazor.Server/Components/Pages/RecipeDetail.razor` | ✅ Built — Unit 4c |
 | `RecipeBook.Blazor.Server/Components/Pages/RecipeForm.razor` | **Create** — new page |
 | `RecipeBook.Blazor.Server/Components/Pages/MyRecipes.razor` | **Create** — new page |
 | `RecipeBook.Blazor.Server/Components/Pages/MealPlans.razor` | **Create** — new page |
 | `RecipeBook.Blazor.Server/Components/Pages/MealPlanDetail.razor` | **Create** — new page |
 | `RecipeBook.Blazor.Server/Components/Pages/MealPlanCreate.razor` | **Create** — new page |
-| `RecipeBook.Blazor.Server/Components/Shared/RecipeCard.razor` | **Create** — shared component |
-| `RecipeBook.Blazor.Server/Components/Shared/RecipeSearchBar.razor` | **Create** — shared component |
-| `RecipeBook.Blazor.Server/Components/Shared/CategoryFilter.razor` | **Create** — shared component |
-| `RecipeBook.Blazor.Server/Components/Shared/PaginationBar.razor` | **Create** — shared component |
+| `RecipeBook.Blazor.Server/Components/Shared/RecipeCard.razor` | ✅ Built — Unit 4b (updated in 4c) |
+| `RecipeBook.Blazor.Server/Components/Shared/RecipeSearchBar.razor` | ✅ Built — Unit 4b |
+| `RecipeBook.Blazor.Server/Components/Shared/CategoryFilter.razor` | ✅ Built — Unit 4b |
+| `RecipeBook.Blazor.Server/Components/Shared/PaginationBar.razor` | ✅ Built — Unit 4b |
 
 ### PRDs (DO NOT MODIFY)
 | File | Purpose |
@@ -573,12 +573,14 @@ These API client methods need implementation (see Unit 4a):
 - [x] Pagination works
 - [x] Loading/error/empty states render
 
-### Unit 4c (Recipe Detail)
-- [ ] Two-column layout renders
-- [ ] Serving size scaler works
-- [ ] Ingredients/steps display correctly
-- [ ] Fork button visible for non-owner
-- [ ] Edit/delete buttons for owner/admin
+### Unit 4c (Recipe Detail) ✅
+- [x] Two-column layout renders
+- [x] Serving size scaler works
+- [x] Ingredients/steps display correctly
+- [x] Fork button visible for non-owner
+- [x] Edit/delete buttons for owner/admin
+
+**Known bug to fix in Unit 4d:** `RecipeDetail.razor` has a serving count initialization bug — `_servingCount` starts at `1` instead of the recipe's actual `ServingSize` because the sync `OnParametersSet` runs before `_recipe` is loaded in `OnParametersSetAsync`. Fix: move `_servingCount = _recipe?.ServingSize ?? 1` into `OnParametersSetAsync` after loading, remove the sync `OnParametersSet`.
 
 ### Unit 4d (Recipe Form)
 - [ ] Create and edit modes work
