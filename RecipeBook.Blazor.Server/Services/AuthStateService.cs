@@ -46,6 +46,21 @@ public class AuthStateService : AuthenticationStateProvider, IAuthStateService
 
     public string? GetJwt() => _jwt;
 
+    public string? GetUserId()
+    {
+        if (string.IsNullOrEmpty(_jwt)) return null;
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var token = handler.ReadJwtToken(_jwt);
+            return token.Subject;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public override Task<AuthenticationState> GetAuthenticationStateAsync()
     {
         return Task.FromResult(new AuthenticationState(_cachedPrincipal));

@@ -1,3 +1,6 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+
 namespace RecipeBook.Blazor.Server.Services;
 
 /// <summary>
@@ -8,4 +11,5 @@ public interface IAuthStateService
     Task SetUser(string jwt);
     void ClearUser();
     string? GetJwt();
+    string? GetUserId();
 }

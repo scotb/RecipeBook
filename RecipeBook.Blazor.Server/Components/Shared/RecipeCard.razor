@@ -1,11 +1,45 @@
 @using RecipeBook.Application.DTOs
+@using MudBlazor
 
 <MudCard Class="mb-4" hoverable="true" click="@(() => HandleClick())">
     <MudCardContent>
         @if (Recipe != null)
         {
             <MudText Typo="Typo.h6">@Recipe.Title</MudText>
-            <MudText Class="mt-1" Style="font-size: 0.875rem;">@Recipe.Category</MudText>
+
+            <div class="d-flex align-center mt-1 gap-1">
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mr-1">@Recipe.Category</MudChip>
+
+                @if (Recipe.PrepTimeMinutes.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Schedule" Class="mr-1" Size="Size.Small" />
+                        Prep @(Recipe.PrepTimeMinutes.Value)m
+                    </MudText>
+                }
+
+                @if (Recipe.CookTimeMinutes.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.LocalDining" Class="mr-1" Size="Size.Small" />
+                        Cook @(Recipe.CookTimeMinutes.Value)m
+                    </MudText>
+                }
+            </div>
+
+            @if (Recipe.Tags.Count > 0)
+            {
+                <div class="mt-2 d-flex flex-wrap gap-1">
+                    @foreach (var tag in Recipe.Tags.Take(3))
+                    {
+                        <span class="tag-chip">@tag</span>
+                    }
+                    @if (Recipe.Tags.Count > 3)
+                    {
+                        <MudText Typo="Typo.caption" Class="align-self-center">+@(Recipe.Tags.Count - 3) more</MudText>
+                    }
+                </div>
+            }
         }
     </MudCardContent>
 </MudCard>

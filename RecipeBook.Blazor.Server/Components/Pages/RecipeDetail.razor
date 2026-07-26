@@ -1,0 +1,166 @@
+@page "/recipes/{Id:guid}"
+@using RecipeBook.Application.DTOs
+@using RecipeBook.Application.Exceptions
+@using RecipeBook.Domain.Enums
+@using MudBlazor
+@inject IRecipeApiService Recipes
+@inject NavigationManager Navigation
+@inject IAuthStateService AuthState
+
+<PageTitle>Recipe — @(_recipe?.Title ?? "Loading")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4 mb-4" />
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mt-4">
+            @_errorMessage
+            <MudButton Color="Color.Primary" OnClick="Retry" Class="ml-2">Retry</MudButton>
+        </MudAlert>
+    }
+    else if (_recipe != null)
+    {
+        <div class="d-flex align-center justify-space-between mb-2">
+            <div>
+                <MudText Typo="Typo.h4">@_recipe.Title</MudText>
+                <MudText Typo="Typo.subtitle1" Class="mt-1">@_recipe.Category</MudText>
+                @if (_recipe.Visibility == RecipeVisibility.Private && _recipe.OwnerId == AuthState.GetUserId())
+                {
+                    <span style="display:inline-block;background:#ed6c02;color:white;font-size:0.75rem;padding:2px 8px;border-radius:4px;margin-top:4px;">Private</span>
+                }
+            </div>
+            <div class="d-flex align-center">
+                <MudText Class="mr-2">Servings:</MudText>
+                <input type="number" @bind="_servingCount" min="1" class="mud-input-control mud-text-body1" style="width:80px;padding:4px;" />
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_recipe.Description))
+        {
+            <MudText Typo="Typo.body1" Class="mt-2">@_recipe.Description</MudText>
+        }
+
+        <div class="mt-2">
+            <MudText Typo="Typo.caption">By @_recipe.OwnerDisplayName</MudText>
+            @if (_recipe.SourceRecipeId.HasValue)
+            {
+                <MudText Typo="Typo.caption" Class="ml-2">
+                    <a href="/recipes/@_recipe.SourceRecipeId">Forked from original</a>
+                </MudText>
+            }
+        </div>
+
+        <MudGrid Class="mt-4">
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-2">Ingredients</MudText>
+                @foreach (var ingredient in _recipe.Ingredients.OrderBy(i => i.SortOrder))
+                {
+                    var scaledQty = ScaleQuantity(ingredient.Quantity ?? 0);
+                    <MudText>@FormatQuantity(scaledQty) @(ingredient.Unit ?? "") @ingredient.Name</MudText>
+                }
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.h6" Class="mb-2">Steps</MudText>
+                @foreach (var step in _recipe.Steps.OrderBy(s => s.SortOrder))
+                {
+                    <div class="d-flex align-start mb-2">
+                        <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:#1976d2;color:white;font-size:0.75rem;margin-right:8px;flex-shrink:0;">@((step.SortOrder + 1).ToString())</span>
+                        <MudText>@step.Body</MudText>
+                    </div>
+                }
+            </MudItem>
+        </MudGrid>
+
+        <div class="mt-4 d-flex gap-2">
+            @if (_recipe.Visibility == RecipeVisibility.Public && _recipe.OwnerId != AuthState.GetUserId())
+            {
+                <MudButton Color="Color.Primary" OnClick="HandleFork">Fork this Recipe</MudButton>
+            }
+            @if (_recipe.OwnerId == AuthState.GetUserId())
+            {
+                <MudButton Color="Color.Secondary" OnClick="HandleEdit">Edit</MudButton>
+                <MudButton Color="Color.Error" OnClick="HandleDelete">Delete</MudButton>
+            }
+        </div>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+    private RecipeDto? _recipe;
+    private int _servingCount = 1;
+    private bool _loading = true;
+    private string? _errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (_recipe != null)
+        {
+            _servingCount = _recipe.ServingSize;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            _recipe = await Recipes.GetByIdAsync(Id);
+        }
+        catch (ApiException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Retry()
+    {
+        _errorMessage = null;
+        _ = OnParametersSetAsync();
+    }
+
+    private decimal ScaleQuantity(decimal originalQty)
+    {
+        if (_recipe == null || _recipe.ServingSize == 0) return originalQty;
+        var ratio = (decimal)_servingCount / _recipe.ServingSize;
+        return Math.Round(originalQty * ratio, 1);
+    }
+
+    private string FormatQuantity(decimal qty)
+    {
+        if (qty == Math.Floor(qty))
+            return ((int)qty).ToString();
+        return qty.ToString("0.0");
+    }
+
+    private async Task HandleFork()
+    {
+        if (_recipe == null) return;
+        var forked = await Recipes.ForkAsync(_recipe.Id);
+        Navigation.NavigateTo($"/recipes/{forked.Id}");
+    }
+
+    private void HandleEdit()
+    {
+        if (_recipe == null) return;
+        Navigation.NavigateTo($"/recipes/{_recipe.Id}/edit");
+    }
+
+    private async Task HandleDelete()
+    {
+        if (_recipe == null) return;
+        await Recipes.DeleteAsync(_recipe.Id);
+        Navigation.NavigateTo("/recipes");
+    }
+}
