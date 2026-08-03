@@ -95,14 +95,6 @@
     private bool _loading = true;
     private string? _errorMessage;
 
-    protected override void OnParametersSet()
-    {
-        if (_recipe != null)
-        {
-            _servingCount = _recipe.ServingSize;
-        }
-    }
-
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
@@ -112,6 +104,10 @@
         try
         {
             _recipe = await Recipes.GetByIdAsync(Id);
+            if (_recipe != null)
+            {
+                _servingCount = _recipe.ServingSize;
+            }
         }
         catch (ApiException ex)
         {

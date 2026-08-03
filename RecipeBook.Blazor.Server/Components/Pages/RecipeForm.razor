@@ -1,0 +1,268 @@
+@page "/recipes/new"
+@page "/recipes/{Id:guid}/edit"
+@using System.ComponentModel.DataAnnotations
+@using RecipeBook.Application.DTOs
+@using RecipeBook.Domain.Enums
+@inject IRecipeApiService Recipes
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEditMode ? "Edit Recipe" : "Create Recipe") — RecipeBook</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large">
+    @if (_loading)
+    {
+        <MudProgressCircular Indeterminate="true" Class="mt-4 mb-4" />
+    }
+    else if (!string.IsNullOrEmpty(_errorMessage))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @_errorMessage
+        </MudAlert>
+    }
+    else
+    {
+        <EditForm Model="_model" OnValidSubmit="HandleSave">
+            <DataAnnotationsValidator />
+
+            <h3>Title</h3>
+            <MudTextField @bind-Value="_model.Title" Placeholder="Recipe title" Required="true" MaxLength="200" />
+
+            <div class="mt-4">
+                <h4>Ingredients</h4>
+                @if (_model.Ingredients.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="text-warning">No ingredients added. Click "Add Ingredient" to begin.</MudText>
+                }
+                else
+                {
+                    @foreach (var ingredient in _model.Ingredients)
+                    {
+                        <div class="d-flex align-center mb-2">
+                            <MudTextField @bind-Value="ingredient.Name" Placeholder="Ingredient name" Variant="Variant.Outlined" Class="mr-2 ingredient-input" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Variant="Variant.Text" Size="Size.Small" OnClick="() => RemoveIngredient(ingredient)" />
+                        </div>
+                    }
+                }
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddIngredient">+ Add Ingredient</MudButton>
+            </div>
+
+            <div class="mt-4">
+                <h4>Steps</h4>
+                @if (_model.Steps.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="text-warning">No steps added. Click "Add Step" to begin.</MudText>
+                }
+                else
+                {
+                    @foreach (var step in _model.Steps)
+                    {
+                        <div class="d-flex align-start mb-2">
+                            <MudTextField @bind-Value="step.Body" Placeholder="Step description" Variant="Variant.Outlined" Class="mr-2 step-input" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Variant="Variant.Text" Size="Size.Small" OnClick="() => RemoveStep(step)" />
+                        </div>
+                    }
+                }
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="AddStep">+ Add Step</MudButton>
+            </div>
+
+            <ValidationSummary />
+
+            <div class="mt-4 d-flex gap-2">
+                <MudButton Color="Color.Primary" Disabled="@_saving" OnClick="HandleSave">Save Recipe</MudButton>
+                <MudButton Variant="Variant.Text" OnClick="HandleCancel">Cancel</MudButton>
+            </div>
+        </EditForm>
+    }
+</MudContainer>
+
+<style>
+    .ingredient-input { max-width: 300px; }
+    .step-input { max-width: 400px; }
+</style>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsEditMode => Id.HasValue;
+    private RecipeDto? _recipe;
+    private CreateRecipeModel _model = new();
+    private readonly List<ValidationResult> _validationResults = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _errorMessage;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            if (IsEditMode && Id.HasValue)
+            {
+                _recipe = await Recipes.GetByIdAsync(Id.Value);
+                if (_recipe != null)
+                {
+                    _model = new CreateRecipeModel
+                    {
+                        Title = _recipe.Title,
+                        Description = _recipe.Description,
+                        ImageUrl = _recipe.ImageUrl,
+                        Category = _recipe.Category,
+                        Visibility = _recipe.Visibility,
+                        ServingSize = _recipe.ServingSize,
+                        PrepTimeMinutes = _recipe.PrepTimeMinutes,
+                        CookTimeMinutes = _recipe.CookTimeMinutes,
+                    };
+                }
+            }
+            else
+            {
+                _model = new CreateRecipeModel();
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to load recipe: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsValid()
+    {
+        var context = new ValidationContext(_model);
+        if (!Validator.TryValidateObject(_model, context, _validationResults, validateAllProperties: true))
+            return false;
+
+        if (_model.Ingredients.Count == 0)
+        {
+            _validationResults.Add(new ValidationResult("At least 1 ingredient is required"));
+            return false;
+        }
+        if (_model.Steps.Count == 0)
+        {
+            _validationResults.Add(new ValidationResult("At least 1 step is required"));
+            return false;
+        }
+
+        return true;
+    }
+
+    private async Task HandleSave()
+    {
+        if (!IsValid())
+        {
+            StateHasChanged();
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+        try
+        {
+            if (IsEditMode && Id.HasValue)
+            {
+                var request = new UpdateRecipeRequest
+                {
+                    Title = _model.Title,
+                    Description = _model.Description,
+                    ImageUrl = _model.ImageUrl,
+                    Category = _model.Category,
+                    Visibility = _model.Visibility,
+                    ServingSize = _model.ServingSize,
+                    PrepTimeMinutes = _model.PrepTimeMinutes,
+                    CookTimeMinutes = _model.CookTimeMinutes
+                };
+                var updated = await Recipes.UpdateAsync(Id.Value, request);
+                Navigation.NavigateTo($"/recipes/{updated.Id}");
+            }
+            else
+            {
+                var request = new CreateRecipeRequest
+                {
+                    Title = _model.Title,
+                    Description = _model.Description,
+                    ImageUrl = _model.ImageUrl,
+                    Category = _model.Category,
+                    ServingSize = _model.ServingSize,
+                    PrepTimeMinutes = _model.PrepTimeMinutes,
+                    CookTimeMinutes = _model.CookTimeMinutes
+                };
+                var created = await Recipes.CreateAsync(request);
+                Navigation.NavigateTo($"/recipes/{created.Id}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to save recipe: {ex.Message}";
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void HandleCancel()
+    {
+        Navigation.NavigateTo("/recipes");
+    }
+
+    private void AddIngredient()
+    {
+        _model.Ingredients.Add(new IngredientRow());
+        StateHasChanged();
+    }
+
+    private void RemoveIngredient(IngredientRow ingredient)
+    {
+        _model.Ingredients.Remove(ingredient);
+        StateHasChanged();
+    }
+
+    private void AddStep()
+    {
+        _model.Steps.Add(new StepRow());
+        StateHasChanged();
+    }
+
+    private void RemoveStep(StepRow step)
+    {
+        _model.Steps.Remove(step);
+        StateHasChanged();
+    }
+
+    private class CreateRecipeModel
+    {
+        [Required(ErrorMessage = "Title is required")]
+        public string Title { get; set; } = "";
+        public List<IngredientRow> Ingredients { get; set; } = new();
+        public List<StepRow> Steps { get; set; } = new();
+        public string? Description { get; set; }
+        public string? ImageUrl { get; set; }
+        public RecipeCategory Category { get; set; }
+        public RecipeVisibility Visibility { get; set; } = RecipeVisibility.Private;
+        public int ServingSize { get; set; } = 1;
+        public int? PrepTimeMinutes { get; set; }
+        public int? CookTimeMinutes { get; set; }
+    }
+
+    private class IngredientRow
+    {
+        public string Name { get; set; } = "";
+        public decimal? Quantity { get; set; }
+        public string Unit { get; set; } = "";
+        public string Notes { get; set; } = "";
+    }
+
+    private class StepRow
+    {
+        public string Title { get; set; } = "";
+        public string Body { get; set; } = "";
+    }
+}

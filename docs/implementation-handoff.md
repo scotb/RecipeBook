@@ -43,7 +43,7 @@ This is a **master map** of remaining work. Each "Unit" below is a self-containe
 | Infrastructure (EF Core, repos) | ✅ Complete | 24 pass | SQLite + PostgreSQL |
 | API (controllers, auth) | ✅ Complete | 137 pass | Wired up, seed data added |
 | Blazor (API clients) | ✅ Complete | 26 pass | All methods implemented |
-| Blazor (UI pages) | 🔄 In progress | — | Catalog + Recipe Detail built |
+| Blazor (UI pages) | 🔄 In progress | — | Catalog + Recipe Detail built, Recipe Form (partial) |
 | Blazor (shared components) | ✅ Complete | — | RecipeCard, Search, Category, Pagination |
 
 **Total:** 379+ tests, 0 failures. Build succeeds.
@@ -370,27 +370,49 @@ if (app.Environment.IsDevelopment())
 
 ---
 
-### Unit 4d: Recipe Form
+### Unit 4d: Recipe Form (Part 1 — Skeleton) ✅
 
 **Type:** Blazor page + sub-components  
 **PRD reference:** PRD 05 §3.6  
-**Estimated effort:** 2-3 hours
+**Estimated effort:** 2-3 hours (Part 1), 1-2 hours (Part 2)
 
-**Prerequisite fix (do this first):**
-In `RecipeDetail.razor`, fix the serving count initialization bug described above (move `_servingCount` assignment into `OnParametersSetAsync`, remove sync `OnParametersSet`).
+**Completed in Part 1 (committed):**
+- Create/Edit modes with blank/pre-populated fields
+- Validation: required fields (title), min 1 ingredient/step
+- Dynamic ingredient/step rows — add/remove
+- Save in create mode calls `CreateAsync`, navigates to detail
+- Cancel navigates back
+- 9 bUnit tests passing
 
-**Behaviors to test:**
+**Part 2 — Deferred to next commit/PR:**
+- Tag chips — type + Enter to add, click × to remove
+- Nutrition section (collapsible/optional)
+- Description textarea (optional, max 2000)
+- Image URL input (optional, valid URL)
+- Category dropdown (select, required)
+- Visibility radio buttons (private/public, required)
+- Prep/Cook time, Servings number inputs
+- Positive save tests (create + edit)
+- Cancel navigation test
+
+**Note for Part 2:** The mapper code between `RecipeDto`, `CreateRecipeModel`, and request objects is duplicated. Fix by extracting a mapper method — best done as part of Part 2 since the field count will grow from ~8 to ~15.
+
+**Behaviors to test (Part 1 — completed):**
 1. Create mode — all fields blank by default
 2. Edit mode — fields pre-populated from API
 3. Validates required fields (title, serving size, category)
 4. Validates minimum 1 ingredient and 1 step
-5. Dynamic ingredient rows — add, edit, remove, reorder
-6. Dynamic step rows — add, edit, remove, reorder
-7. Tag chips — type + Enter to add, click × to remove
-8. Nutrition section is collapsible/optional
-9. Saves via `CreateAsync` or `UpdateAsync`
-10. Cancel navigates back to previous page
-11. Shows validation errors on blur
+5. Dynamic ingredient rows — add, remove
+6. Dynamic step rows — add, remove
+7. Saves via `CreateAsync` in create mode
+8. Cancel navigates back
+
+**Behaviors to test (Part 2 — deferred):**
+9. Tag chips — type + Enter to add, click × to remove
+10. Nutrition section is collapsible/optional
+11. Description, image URL, category, visibility, prep/cook time inputs
+12. Positive save tests (create + edit) → API called + navigation
+13. Cancel button navigation test
 
 ---
 
@@ -483,8 +505,8 @@ All API client stubs have been implemented (see Units 4a and 4c). Remaining meth
 | `RecipeBook.Blazor.Server/Services/MealPlanApiService.cs` | ✅ All stubs |
 | `RecipeBook.Blazor.Server/Services/IAuthStateService.cs` | ✅ `GetUserId()` added |
 | `RecipeBook.Blazor.Server/Components/Pages/Catalog.razor` | ✅ Built — Unit 4b |
-| `RecipeBook.Blazor.Server/Components/Pages/RecipeDetail.razor` | ✅ Built — Unit 4c |
-| `RecipeBook.Blazor.Server/Components/Pages/RecipeForm.razor` | **Create** — new page |
+| `RecipeBook.Blazor.Server/Components/Pages/RecipeDetail.razor` | ✅ Built — Unit 4c (bug fixed) |
+| `RecipeBook.Blazor.Server/Components/Pages/RecipeForm.razor` | 🔄 Built (partial) — Unit 4d skeleton; tags/nutrition/remaining fields deferred |
 | `RecipeBook.Blazor.Server/Components/Pages/MyRecipes.razor` | **Create** — new page |
 | `RecipeBook.Blazor.Server/Components/Pages/MealPlans.razor` | **Create** — new page |
 | `RecipeBook.Blazor.Server/Components/Pages/MealPlanDetail.razor` | **Create** — new page |
@@ -579,16 +601,28 @@ All API client stubs have been implemented (see Units 4a and 4c). Remaining meth
 - [x] Ingredients/steps display correctly
 - [x] Fork button visible for non-owner
 - [x] Edit/delete buttons for owner/admin
-
-**Known bug to fix in Unit 4d:** `RecipeDetail.razor` has a serving count initialization bug — `_servingCount` starts at `1` instead of the recipe's actual `ServingSize` because the sync `OnParametersSet` runs before `_recipe` is loaded in `OnParametersSetAsync`. Fix: move `_servingCount = _recipe?.ServingSize ?? 1` into `OnParametersSetAsync` after loading, remove the sync `OnParametersSet`.
+- [x] Serving count initialization bug fixed (moved to OnParametersSetAsync)
 
 ### Unit 4d (Recipe Form)
-- [ ] Create and edit modes work
-- [ ] Validation works (required fields, min 1 ingredient/step)
-- [ ] Dynamic ingredient/step rows
-- [ ] Tag chips work
-- [ ] Save calls correct API method
-- [ ] Cancel navigates back
+- [x] Create mode renders blank fields
+- [x] Edit mode pre-populates from API
+- [x] Validates required fields (title, serving size, category)
+- [x] Validates min 1 ingredient and 1 step
+- [x] Dynamic ingredient rows — add/remove
+- [x] Dynamic step rows — add/remove
+- [x] Save in create mode calls `CreateAsync` and navigates to new recipe detail
+- [x] Cancel button navigates back
+- [ ] **Deferred to 4d continuation:** Tag chips — type + Enter to add, click × to remove
+- [ ] **Deferred to 4d continuation:** Nutrition section (collapsible/optional)
+- [ ] **Deferred to 4d continuation:** Description textarea
+- [ ] **Deferred to 4d continuation:** Image URL input
+- [ ] **Deferred to 4d continuation:** Category dropdown
+- [ ] **Deferred to 4d continuation:** Visibility radio buttons
+- [ ] **Deferred to 4d continuation:** Prep/Cook time, Servings number inputs
+- [ ] **Deferred to 4d continuation:** Positive save test (valid form → API called)
+- [ ] **Deferred to 4d continuation:** Edit mode save → UpdateAsync test
+- [ ] **Deferred to 4d continuation:** Cancel button navigation test
+- [ ] **Known issue:** Mapping repetition between `RecipeDto`, `CreateRecipeModel`, and request objects — fix when adding remaining fields (Part 2)
 
 ### Unit 4e (My Recipes)
 - [ ] Cards render from personal recipes
